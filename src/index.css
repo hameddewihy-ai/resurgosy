@@ -1,13 +1,341 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-cream text-navy font-sans; }
+
+  /* Arabic text needs more vertical room — override Tailwind Preflight's reset */
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.4;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #f7f1eb; }
+  ::-webkit-scrollbar-thumb { background: #c5bfb8; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #5979bb; }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-brand hover:bg-blue-600 active:scale-[0.97] text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-cta {
+    @apply bg-cta hover:bg-orange-500 active:scale-[0.97] text-white font-bold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-ghost {
+    @apply border border-navy/20 hover:border-brand hover:bg-brand/5 active:scale-[0.97] text-navy hover:text-brand font-medium px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-ghost-white {
+    @apply border border-white/25 hover:border-white/60 hover:bg-white/10 active:scale-[0.97] text-white/80 hover:text-white font-medium px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-brand {
+    @apply bg-brand hover:bg-blue-600 active:scale-[0.97] text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-secondary {
+    @apply bg-white/15 hover:bg-white/25 active:scale-[0.97] text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 border border-white/20;
+  }
+  .btn-danger {
+    @apply bg-error hover:bg-red-700 active:scale-[0.97] text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  .btn-success {
+    @apply bg-success hover:bg-green-700 active:scale-[0.97] text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+
+  /* ── Disabled state — applies to all buttons ─────────────────────── */
+  [class*="btn-"]:disabled,
+  [class*="btn-"][aria-disabled="true"] {
+    @apply opacity-45 cursor-not-allowed pointer-events-none;
+    transform: none !important;
+  }
+
+  /* ── White card (main card on light bg) ────────────────────────── */
+  .glass-card {
+    background: #ffffff;
+    border: 1px solid rgba(31, 42, 56, 0.08);
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 3px rgba(31,42,56,0.04), 0 4px 16px rgba(31,42,56,0.06);
+    transition: box-shadow 0.28s ease, border-color 0.28s ease, transform 0.28s cubic-bezier(0.22,1,0.36,1);
+  }
+  .glass-card:hover {
+    box-shadow: 0 2px 8px rgba(31,42,56,0.06), 0 12px 32px rgba(31,42,56,0.10);
+  }
+  .glass-card:active:not(button) {
+    transform: scale(0.998);
+  }
+
+  /* ── Cream card (on white bg) ──────────────────────────────────── */
+  .cream-card {
+    background: #f7f1eb;
+    border: 1px solid rgba(31, 42, 56, 0.07);
+    border-radius: 1.25rem;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* ── Dark card (inside dark navy sections) ─────────────────────── */
+  .dark-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 1.25rem;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .dark-card:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  /* ── Input fields ──────────────────────────────────────────────── */
+  .input-field {
+    @apply w-full bg-white border border-navy/10 rounded-xl px-4 py-3 text-navy placeholder-charcoal/40 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all duration-200;
+  }
+  .input-field:hover:not(:focus) {
+    border-color: rgba(31,42,56,0.22);
+  }
+  .input-field-dark {
+    @apply w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20 transition-all duration-200;
+  }
+  .input-field-error {
+    @apply w-full bg-white border border-error rounded-xl px-4 py-3 text-navy placeholder-charcoal/40 focus:outline-none focus:border-error focus:ring-2 focus:ring-error/20 transition-all duration-200;
+  }
+  .input-field-success {
+    @apply w-full bg-white border border-success rounded-xl px-4 py-3 text-navy placeholder-charcoal/40 focus:outline-none focus:border-success focus:ring-2 focus:ring-success/20 transition-all duration-200;
+  }
+  .input-field[aria-invalid="true"] {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(220,38,38,0.15);
+  }
+  .input-field[aria-invalid="false"]:not(:placeholder-shown) {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px rgba(22,163,74,0.12);
+  }
+
+  /* ── Section backgrounds ───────────────────────────────────────── */
+  .section-white      { background-color: #ffffff; }
+  .section-cream      { background-color: #f7f1eb; }
+  .section-navy       { background-color: #1f2a38; color: #ffffff; }
+  .section-brand      { background-color: #5979bb; color: #ffffff; }
+  .section-navy-tint  { background-color: #f0f3f8; }
+  .section-brand-tint { background-color: #eef1f9; }
+
+  /* ── Page hero — dark navy header on all sub-pages ─────────────── */
+  .page-hero-wrap {
+    background-color: #1f2a38;
+    border-bottom: 1px solid rgba(89, 121, 187, 0.18);
+    position: relative;
+  }
+
+  /* ── Typography helpers ────────────────────────────────────────── */
+  .eyebrow {
+    @apply text-brand text-[11px] font-bold tracking-[0.18em] uppercase;
+  }
+  .eyebrow-white {
+    @apply text-white/55 text-[11px] font-bold tracking-[0.18em] uppercase;
+  }
+  .num-badge {
+    font-family: 'Bebas Neue', Impact, sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    color: #5979bb;
+    opacity: 0.85;
+  }
+
+  /* ── Focus visible (accessibility) ─────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid rgba(89,121,187,0.6);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+
+  /* ── Dividers ──────────────────────────────────────────────────── */
+  .divider       { border-top: 1px solid rgba(31,42,56,0.08); }
+  .divider-light { border-top: 1px solid rgba(255,255,255,0.10); }
+
+  /* ── Engineering Grid (Enerblock Style) ────────────────────────── */
+  .bg-engineering-grid {
+    background-color: #f7f1eb;
+    background-image: 
+      linear-gradient(to right, rgba(31, 42, 56, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(31, 42, 56, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .bg-engineering-grid-dark {
+    background-color: #1f2a38;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .border-blueprint {
+    border: 1px solid rgba(31, 42, 56, 0.15);
+    border-radius: 0;
+  }
+  .border-blueprint-dark {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0;
+  }
+  .blueprint-card {
+    background: #ffffff;
+    border: 1px solid rgba(31, 42, 56, 0.2);
+    border-radius: 0;
+    position: relative;
+  }
+  /* Corner Crosshairs for blueprint cards */
+  .blueprint-card::before, .blueprint-card::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border: 1px solid rgba(31, 42, 56, 0.3);
+    pointer-events: none;
+  }
+  .blueprint-card::before { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+  .blueprint-card::after { bottom: -3px; right: -3px; border-left: none; border-top: none; }
+
+  /* ── Premium UI Extensions ──────────────────────────────────────── */
+  .premium-glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_rgba(31,42,56,0.08)];
+  }
+  .premium-glass-dark {
+    @apply bg-navy/60 backdrop-blur-lg border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.2)];
+  }
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand via-blue-600 to-cta;
+  }
+  .gradient-text-light {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-brand/40;
+  }
+  .glow-hover {
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(89,121,187,0.3)] hover:-translate-y-0.5;
+  }
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* ── Semantic Badges ────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-success { @apply badge bg-success/10 text-success border border-success/20; }
+  .badge-error   { @apply badge bg-error/10 text-error border border-error/20; }
+  .badge-warning { @apply badge bg-warning/10 text-warning border border-warning/20; }
+  .badge-info    { @apply badge bg-info/10 text-info border border-info/20; }
+  .badge-muted   { @apply badge bg-muted/10 text-muted border border-muted/20; }
+  .badge-brand   { @apply badge bg-brand/10 text-brand border border-brand/20; }
+
+  /* ── Semantic Alerts ────────────────────────────────────────────────── */
+  .alert {
+    @apply flex items-start gap-3 p-4 rounded-xl border text-sm;
+  }
+  .alert-success { @apply alert bg-success/8 border-success/25 text-success; }
+  .alert-error   { @apply alert bg-error/8 border-error/25 text-error; }
+  .alert-warning { @apply alert bg-warning/8 border-warning/25 text-warning; }
+  .alert-info    { @apply alert bg-info/8 border-info/25 text-info; }
+
+  /* ── Spinner ─────────────────────────────────────────────────────────── */
+  .spinner {
+    @apply inline-block rounded-full border-2 border-current border-t-transparent animate-spin;
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  /* ── Text helpers ────────────────────────────────────────────────────── */
+  .text-muted { @apply text-charcoal/50; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@layer utilities {
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  .rtl { direction: rtl; }
+  .ltr { direction: ltr; }
+
+  .text-balance { text-wrap: balance; }
+
+  /* Bento Grid Utility classes */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    .bento-col-2 {
+      grid-column: span 2;
+    }
+    .bento-row-2 {
+      grid-row: span 2;
+    }
+  }
+
+  /* GPU Accelerated Transitions */
+  .gpu-transition {
+    transform: translate3d(0, 0, 0);
+    will-change: transform, opacity;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, box-shadow 0.2s;
+  }
+  .gpu-transition:hover {
+    transform: translate3d(0, -3px, 0);
+  }
+  .gpu-transition:active {
+    transform: translate3d(0, -1px, 0) scale(0.99);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spinner { animation: none; }
+  .shimmer { animation: none; background: rgba(255,255,255,0.12); }
+}
+
+/* --- Print Styles for Contracts --- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .resurgo-contract-print, .resurgo-contract-print * {
+    visibility: visible;
+  }
+  .resurgo-contract-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+  @page {
+    margin: 20mm;
+  }
+}
+
+/* --- Low-Bandwidth Mode Overrides --- */
+body.low-bandwidth * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+body.low-bandwidth .spinner,
+body.low-bandwidth .shimmer {
+  animation: none !important;
+  background: rgba(31, 42, 56, 0.08) !important;
 }
