@@ -24,15 +24,20 @@ function ImageTile({ item, onRemove }) {
           <AlertTriangle size={10} />
           مكرر
         </div>
+      ) : item.error ? (
+        <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+          <AlertTriangle size={10} />
+          فشل الرفع
+        </div>
       ) : item.processing ? (
         <div className="absolute top-2 right-2 bg-slate-800/80 text-slate-300 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
           <Loader2 size={10} className="animate-spin" />
-          فحص...
+          جاري الرفع...
         </div>
       ) : (
         <div className="absolute top-2 right-2 bg-green-500/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <CheckCircle2 size={10} />
-          فريد
+          تم الرفع
         </div>
       )}
 
@@ -78,11 +83,43 @@ export default function SmartImageGallery({ images, onChange }) {
     const existingFiles = images.map((img) => ({ file: img.file }));
     const { duplicates } = await filterDuplicates(incoming, existingFiles);
 
-    // Build final items
+    // Build final items and start uploading non-duplicates
     const finalItems = incoming.map((file) => {
       const isDupe = duplicates.some((d) => d.file === file);
       const existing = pendingItems.find((p) => p.file === file);
-      return { ...existing, duplicate: isDupe, processing: false };
+      
+      const item = { ...existing, duplicate: isDupe, processing: !isDupe };
+      
+      if (!isDupe) {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            // Update the image with the real URL from R2
+            onChange(prev => prev.map(img => 
+              img.file === file ? { ...img, preview: data.url, processing: false, uploaded: true } : img
+            ));
+          } else {
+            // Mark as error
+            onChange(prev => prev.map(img => 
+              img.file === file ? { ...img, processing: false, error: true } : img
+            ));
+          }
+        })
+        .catch(() => {
+          onChange(prev => prev.map(img => 
+            img.file === file ? { ...img, processing: false, error: true } : img
+          ));
+        });
+      }
+      
+      return item;
     });
 
     onChange([...images, ...finalItems]);
@@ -134,41 +171,23 @@ export default function SmartImageGallery({ images, onChange }) {
         )}
       </div>
 
-      {/* Drop zone & Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Standard Upload */}
-        <div
-          onClick={() => inputRef.current.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files, false); }}
-          className="border-2 border-dashed border-slate-600 hover:border-brand/60 hover:bg-slate-800/30 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2"
-        >
-          <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
-            onChange={(e) => handleFiles(e.target.files, false)} />
-          <div className="w-12 h-12 rounded-xl bg-slate-700/60 flex items-center justify-center">
-            <ImageIcon size={22} className="text-slate-400" />
-          </div>
-          <div>
-            <p className="text-slate-300 font-medium text-sm">رفع صور من الجهاز</p>
-            <p className="text-slate-500 text-[10px] mt-1">يتم فحص التكرار تلقائياً</p>
-          </div>
-        </div>
-
+      {/* Action Zone: Live Capture Only */}
+      <div className="flex flex-col items-center justify-center">
         {/* Live Capture */}
         <div
           onClick={() => cameraRef.current.click()}
-          className="border-2 border-amber-500/30 hover:border-amber-400 bg-amber-500/5 hover:bg-amber-500/10 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+          className="w-full border-2 border-amber-500/30 hover:border-amber-400 bg-amber-500/5 hover:bg-amber-500/10 rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 group"
         >
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" multiple className="hidden"
             onChange={(e) => handleFiles(e.target.files, true)} />
-          <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Camera size={22} className="text-amber-500" />
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Camera size={26} className="text-amber-500" />
           </div>
           <div>
-            <p className="text-amber-500 font-bold text-sm flex items-center justify-center gap-1">
-              <ShieldCheck size={14} /> تصوير مباشر موثق
+            <p className="text-amber-500 font-bold text-lg flex items-center justify-center gap-2">
+              <ShieldCheck size={18} /> التقاط صورة مباشرة
             </p>
-            <p className="text-amber-500/60 text-[10px] mt-1">يمنح عقارك شارة الموثوقية</p>
+            <p className="text-amber-500/60 text-xs mt-2">يُسمح فقط بالتصوير المباشر لضمان موثوقية العقار</p>
           </div>
         </div>
       </div>
