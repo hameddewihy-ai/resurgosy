@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# lock files (let Cloudflare generate fresh)
+package-lock.json
+
 # testing
 /coverage
 
