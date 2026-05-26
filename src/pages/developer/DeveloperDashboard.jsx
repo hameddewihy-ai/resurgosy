@@ -21,9 +21,122 @@ const TIER_BADGE = {
   cold: { label: '🌡️ Cold', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
 };
 
+// ── Add Project Modal ─────────────────────────────────────────────────────────
+const CITIES = ['دمشق','ريف دمشق','حلب','حمص','حماة','اللاذقية','طرطوس','إدلب','دير الزور','الرقة','الحسكة','السويداء','درعا','القنيطرة'];
+const PROJECT_TYPES = ['سكني','تجاري','صناعي','مختلط'];
+
+function AddProjectModal({ onClose, onAdd }) {
+  const [form, setForm] = useState({
+    name: '', city: 'دمشق', type: 'سكني', totalUnits: '', startDate: '', nextMilestone: '', description: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.totalUnits) { toast.error('يرجى تعبئة اسم المشروع وعدد الوحدات'); return; }
+    setSaving(true);
+    const newProject = {
+      id: Date.now(),
+      developerId: 1,
+      name: form.name,
+      city: form.city,
+      type: form.type,
+      totalUnits: parseInt(form.totalUnits),
+      sold: 0,
+      progress: 0,
+      nextMilestone: form.nextMilestone || 'بدء الأعمال',
+      description: form.description,
+      startDate: form.startDate,
+    };
+    onAdd(newProject);
+    toast.success('تم إضافة المشروع بنجاح ✓');
+    sendAdminAlert('admin@resurgo.com', 'مشروع عقاري جديد', { Project: form.name, City: form.city, Units: form.totalUnits }).catch(() => {});
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" dir="rtl">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-navy/10 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-navy/8 shrink-0">
+          <div>
+            <p className="text-navy font-black text-base">إضافة مشروع جديد</p>
+            <p className="text-charcoal/50 text-xs mt-0.5">سيظهر المشروع في إدارة المشاريع فور الإضافة</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-cream flex items-center justify-center text-charcoal/40 hover:text-navy transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5">
+          <form id="add-project-form" onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-charcoal/60 block mb-1">اسم المشروع *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="مثال: برج الشام السكني" required
+                className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-charcoal/60 block mb-1">المدينة</label>
+                <select value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand">
+                  {CITIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-charcoal/60 block mb-1">نوع المشروع</label>
+                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand">
+                  {PROJECT_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-charcoal/60 block mb-1">عدد الوحدات الكلي *</label>
+                <input type="number" min="1" value={form.totalUnits} onChange={e => setForm(f => ({ ...f, totalUnits: e.target.value }))}
+                  placeholder="120" required
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-charcoal/60 block mb-1">تاريخ بدء التنفيذ</label>
+                <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-charcoal/60 block mb-1">المحطة القادمة</label>
+              <input value={form.nextMilestone} onChange={e => setForm(f => ({ ...f, nextMilestone: e.target.value }))}
+                placeholder="مثال: إنهاء الهيكل الخرساني"
+                className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-charcoal/60 block mb-1">وصف المشروع</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3} placeholder="نبذة عن المشروع للمستثمرين..."
+                className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm text-navy outline-none focus:border-brand resize-none" />
+            </div>
+          </form>
+        </div>
+        <div className="flex gap-2 p-5 border-t border-navy/8 shrink-0">
+          <button form="add-project-form" type="submit" disabled={saving}
+            className="flex-1 bg-brand hover:bg-brand/90 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+            <Plus size={15} /> {saving ? 'جاري الحفظ...' : 'إضافة المشروع'}
+          </button>
+          <button onClick={onClose} className="px-4 border border-navy/15 text-charcoal/60 rounded-xl text-sm hover:text-navy transition-colors">إلغاء</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DeveloperDashboard() {
   const [activeTab, setActiveTab] = useState('crm');
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [extraProjects, setExtraProjects] = useState([]);
 
   const TABS = [
     { id: 'crm',      label: 'إدارة العملاء (CRM)',         icon: Users },
@@ -48,7 +161,9 @@ export default function DeveloperDashboard() {
               <p className="text-white/60 text-sm">لوحة تحكم المطور العقاري</p>
             </div>
           </div>
-          <button onClick={() => toast.success('ميزة إضافة مشروع ستتوفر قريباً — تواصل مع فريق RESURGO لتسجيل مشروعك')} className="bg-brand hover:bg-white hover:text-navy text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
+          <button
+            onClick={() => { setShowAddProject(true); setActiveTab('projects'); }}
+            className="bg-brand hover:bg-white hover:text-navy text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
             <Plus size={16} /> إضافة مشروع جديد
           </button>
         </div>
@@ -77,12 +192,21 @@ export default function DeveloperDashboard() {
             <AnimatePresence mode="wait">
               {activeTab === 'crm'      && <CrmTab      key="crm"      />}
               {activeTab === 'tenders'  && <TendersTab  key="tenders"  />}
-              {activeTab === 'projects' && <ProjectsTab key="projects" />}
+              {activeTab === 'projects' && <ProjectsTab key="projects" extraProjects={extraProjects} />}
               {activeTab === 'gantt'    && <GanttTab    key="gantt"    />}
             </AnimatePresence>
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showAddProject && (
+          <AddProjectModal
+            onClose={() => setShowAddProject(false)}
+            onAdd={(p) => setExtraProjects(prev => [p, ...prev])}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -539,9 +663,9 @@ function TendersTab() {
 }
 
 // ── Projects Tab ──────────────────────────────────────────────────────────────
-function ProjectsTab() {
+function ProjectsTab({ extraProjects = [] }) {
   const { projects, updateProjectProgress } = useGlobalData();
-  const developerProjects = projects.filter(p => p.developerId === 1);
+  const developerProjects = [...extraProjects, ...projects.filter(p => p.developerId === 1)];
   const [reportProject, setReportProject] = useState(null);
 
   return (

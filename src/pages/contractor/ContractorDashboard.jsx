@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isConfigured } from '../../lib/supabase';
 import {
-  Tractor, Plus, Save, Trash2, Edit3, Settings,
+  Tractor, Plus, Save, Trash2, Edit3, Settings, X,
   MapPin, Clock, Box, Wrench, ChevronDown, CheckCircle, FileText, Search, MessageCircle,
   Inbox, Globe, Star, Phone, Bell, DollarSign, XCircle, ChevronLeft
 } from 'lucide-react';
@@ -99,20 +99,25 @@ export default function ContractorDashboard() {
       });
   }, [user]);
 
+  const EMPTY_FORM = {
+    name: '', category: 'earthmoving', location: '', type: 'wet',
+    price: '', unit: 'shift', hasFuel: true, transportCost: '0',
+    attachments: [], newAttachment: '', photos: [],
+  };
+
   // Form State
-  const [form, setForm] = useState({
-    name: '',
-    category: 'earthmoving',
-    location: '',
-    type: 'wet', // 'wet' (رطب) or 'dry' (جاف)
-    price: '',
-    unit: 'shift',
-    hasFuel: true,
-    transportCost: '0',
-    attachments: [],
-    newAttachment: '',
-    photos: []
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editTarget, setEditTarget] = useState(null); // equipment being edited
+
+  const startEdit = (eq) => {
+    setEditTarget(eq);
+    setForm({
+      name: eq.name, category: eq.category, location: eq.location,
+      type: eq.type, price: String(eq.price), unit: eq.unit,
+      hasFuel: true, transportCost: '0', attachments: [], newAttachment: '', photos: [],
+    });
+    setActiveTab('add');
+  };
 
   const handleAddAttachment = () => {
     if (form.newAttachment.trim()) {
@@ -131,6 +136,28 @@ export default function ContractorDashboard() {
       return;
     }
     const price = parseInt(form.price);
+
+    // ── UPDATE existing equipment ──
+    if (editTarget) {
+      if (isConfigured && user) {
+        await supabase.from('equipment').update({
+          name: form.name, category: form.category, city: form.location,
+          hire_type: form.type, pricing_unit: form.unit,
+          rate: form.type === 'dry' ? price : 0,
+          wet_rate: form.type === 'wet' ? price : 0,
+        }).eq('id', editTarget.id).eq('owner_id', user.id);
+      }
+      setEquipments(prev => prev.map(eq =>
+        eq.id === editTarget.id
+          ? { ...eq, name: form.name, category: form.category, location: form.location, type: form.type, price, unit: form.unit }
+          : eq
+      ));
+      toast.success('تم تحديث بيانات المعدة ✓');
+      setEditTarget(null);
+      setForm(EMPTY_FORM);
+      setActiveTab('list');
+      return;
+    }
 
     if (isConfigured && user) {
       const { data, error } = await supabase.from('equipment').insert({
@@ -256,7 +283,7 @@ export default function ContractorDashboard() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('add')}
+              onClick={() => { setEditTarget(null); setForm(EMPTY_FORM); setActiveTab('add'); }}
               className={`shrink-0 px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
                 activeTab === 'add' ? 'bg-brand text-white shadow-md' : 'bg-white text-brand border border-brand/20 hover:border-brand/40'
               }`}
@@ -316,7 +343,7 @@ export default function ContractorDashboard() {
                     </div>
 
                     <div className="flex gap-2 mb-2">
-                      <button onClick={() => toast('ميزة التعديل ستتوفر قريباً')} className="flex-1 py-2 rounded-xl bg-navy/5 text-navy font-bold text-xs hover:bg-navy/10 flex items-center justify-center gap-1.5">
+                      <button onClick={() => startEdit(eq)} className="flex-1 py-2 rounded-xl bg-navy/5 text-navy font-bold text-xs hover:bg-navy/10 flex items-center justify-center gap-1.5">
                         <Edit3 size={14} /> تعديل
                       </button>
                       <button onClick={async () => {
@@ -339,15 +366,24 @@ export default function ContractorDashboard() {
             </motion.div>
           )}
 
-          {/* ─── TAB: ADD EQUIPMENT ──────────────────────────────────────── */}
+          {/* ─── TAB: ADD / EDIT EQUIPMENT ───────────────────────────────── */}
           {activeTab === 'add' && (
-            <motion.div 
+            <motion.div
               key="add"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               className="bg-white rounded-3xl p-6 md:p-10 border border-navy/5 shadow-sm"
             >
+              {editTarget && (
+                <div className="flex items-center gap-2 mb-6 text-sm font-bold text-amber-600 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-xl">
+                  <Edit3 size={15} /> تعديل بيانات: {editTarget.name}
+                  <button type="button" onClick={() => { setEditTarget(null); setForm(EMPTY_FORM); setActiveTab('list'); }}
+                    className="mr-auto text-charcoal/40 hover:text-red-500">
+                    <X size={15} />
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
-                
+
                 {/* Basic Info */}
                 <div>
                   <h3 className="text-lg font-black text-navy border-b border-navy/10 pb-2 mb-5 flex items-center gap-2">
