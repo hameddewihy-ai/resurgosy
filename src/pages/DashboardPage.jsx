@@ -27,6 +27,7 @@ import StudyWorkspaceModal from '../components/studies/StudyWorkspaceModal';
 import InvestorPortfolio from '../components/invest/InvestorPortfolio';
 import { addNotification } from '../components/NotificationsPanel';
 import DocumentManager from '../components/properties/DocumentManager';
+import AlertManager from '../components/properties/AlertManager';
 
 const INQ_KEY       = 'resurgo-inquiries';
 const OWNER_INQ_KEY = 'resurgo-received-inquiries';
@@ -776,6 +777,13 @@ export default function DashboardPage() {
             </motion.div>
           );
         })()}
+
+        {/* ── Property Alerts ── */}
+        {tab === 'saved' && (
+          <div className="mt-6 border-t border-navy/10 pt-6">
+            <AlertManager />
+          </div>
+        )}
 
         {/* ── Transactions ── */}
         {tab === 'clearing' && (
