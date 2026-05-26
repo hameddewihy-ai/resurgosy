@@ -362,7 +362,8 @@ export default function MasterAdminDashboard() {
     toast.success(`تمت الموافقة على "${prop.title}" ونُشر في الدليل`);
     if (isConfigured) {
       await supabase.from('properties').update({ status: 'listed' }).eq('id', prop.id);
-      supabase.functions.invoke('match-search-alerts', { body: { ...prop, status: 'listed' } }).catch(() => {});
+      supabase.functions.invoke('match-search-alerts',     { body: { ...prop, status: 'listed' } }).catch(() => {});
+      supabase.functions.invoke('notify-property-alerts', { body: { ...prop, status: 'listed' } }).catch(() => {});
     }
     if (prop.owner_id) {
       addNotification({
