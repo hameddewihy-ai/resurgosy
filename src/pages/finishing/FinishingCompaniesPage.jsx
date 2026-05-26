@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, MapPin, Star, CheckCircle, Building2, X,
-  Phone, Globe, Hammer, Sun,
-  Home, Shield, Layers, Wrench, PaintBucket,
-  TreePine, HardHat, ArrowLeft, BadgeCheck,
+  Phone, Globe, Sun, HardHat,
+  Shield, Layers, Wrench, PaintBucket,
+  TreePine, ArrowLeft, BadgeCheck,
   Clock, ChevronLeft, DollarSign, Zap,
+  DoorOpen, Mountain, Droplets, Sofa, Cpu, Armchair, Package,
 } from 'lucide-react';
 import PageHero from '../../components/PageHero';
 import SEO from '../../components/SEO';
@@ -14,16 +15,21 @@ import { useGlobalData } from '../../context/GlobalContext';
 
 // ── Local filter config ────────────────────────────────────────────────────────
 const SPECS = [
-  { id: 'all',      label: 'الكل',               icon: Building2   },
-  { id: 'expat',    label: 'إكساء المغتربين',    icon: Globe       },
-  { id: 'solar',    label: 'طاقة شمسية',         icon: Sun         },
-  { id: 'restore',  label: 'ترميم إنشائي',       icon: Hammer      },
-  { id: 'interior', label: 'إكساء داخلي',        icon: Home        },
-  { id: 'facade',   label: 'واجهات خارجية',      icon: Layers      },
-  { id: 'mep',      label: 'كهرباء وسباكة',      icon: Wrench      },
-  { id: 'decor',    label: 'ديكور وعمارة',       icon: PaintBucket },
-  { id: 'secure',   label: 'أمن وأنظمة ذكية',   icon: Shield      },
-  { id: 'land',     label: 'حدائق وخارجي',      icon: TreePine    },
+  { id: 'all',     label: 'الكل',                           icon: Building2   },
+  { id: 'expat',   label: 'إكساء المغتربين',               icon: Globe       },
+  { id: 'solar',   label: 'طاقة شمسية',                    icon: Sun         },
+  { id: 'floors',  label: 'أرضيات وجدران وأسقف',           icon: Layers      },
+  { id: 'doors',   label: 'نوافذ وأبواب وأعمال معدنية',    icon: DoorOpen    },
+  { id: 'stone',   label: 'حجر وجي ار سي (GRC)',           icon: Mountain    },
+  { id: 'decor',   label: 'ديكور وهندسة',                  icon: PaintBucket },
+  { id: 'insul',   label: 'عزل وتسخين وتكييف',             icon: Droplets    },
+  { id: 'kitch',   label: 'مطابخ وخزائن',                  icon: Sofa        },
+  { id: 'secure',  label: 'مراقبة وأمان',                  icon: Shield      },
+  { id: 'land',    label: 'لاند سكيب',                     icon: TreePine    },
+  { id: 'smart',   label: 'أنظمة ذكية (Smart Home)',       icon: Cpu         },
+  { id: 'mep',     label: 'كهرباء وصحية وصيانة',           icon: Wrench      },
+  { id: 'furnit',  label: 'مفروشات',                       icon: Armchair    },
+  { id: 'other',   label: 'خدمات مساندة',                  icon: Package     },
 ];
 
 const CITIES_F = ['الكل', 'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس'];

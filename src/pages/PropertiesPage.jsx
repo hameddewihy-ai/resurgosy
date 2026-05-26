@@ -11,6 +11,8 @@ import {
 import MapContainer from '../components/ui/MapContainer';
 import { CITIES, TYPES, SUBTYPES } from '../data/properties';
 import { useGlobalData } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
 import { isSavedProp, toggleSavedProp } from '../utils/savedProps';
 import toast from 'react-hot-toast';
 import PageHero from '../components/PageHero';
@@ -18,6 +20,7 @@ import SEO from '../components/SEO';
 import CompareDrawer from '../components/ui/CompareDrawer';
 import EmptyState from '../components/ui/EmptyState';
 import LazyImage from '../components/ui/LazyImage';
+import SponsorCard from '../components/ui/SponsorCard';
 
 const SESSION_FILTERS_KEY = 'resurgo-filters-session';
 
@@ -26,33 +29,86 @@ const LS_KEY       = 'resurgo-saved-searches';
 const LS_ALERTS    = 'resurgo-search-alerts';
 
 function useSavedSearches() {
-  const [saves, setSaves] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
-    catch { return []; }
-  });
-  const [alerts, setAlerts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LS_ALERTS) || '{}'); }
-    catch { return {}; }
-  });
+  const { user } = useAuth();
+  const useDb = isConfigured && !!user;
 
-  const persist      = (next) => { setSaves(next); localStorage.setItem(LS_KEY, JSON.stringify(next)); };
-  const persistAlerts = (next) => { setAlerts(next); localStorage.setItem(LS_ALERTS, JSON.stringify(next)); };
+  const [saves,  setSaves]  = useState([]);
+  const [alerts, setAlerts] = useState({});
 
-  const save   = (filters, name) => {
+  // Load on mount and whenever login state changes
+  useEffect(() => {
+    if (useDb) {
+      supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'saved_search')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (!data) return;
+          setSaves(data.map(r => ({ id: r.id, name: r.name, filters: r.payload?.filters ?? {} })));
+          const alertMap = {};
+          data.forEach(r => { if (r.payload?.alertEnabled) alertMap[r.id] = true; });
+          setAlerts(alertMap);
+        });
+    } else {
+      try { setSaves(JSON.parse(localStorage.getItem(LS_KEY)   || '[]')); } catch { setSaves([]); }
+      try { setAlerts(JSON.parse(localStorage.getItem(LS_ALERTS) || '{}')); } catch { setAlerts({}); }
+    }
+  }, [useDb, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = async (filters, name) => {
     if (saves.length >= 5) {
       toast('وصلت للحد الأقصى (5 بحوثات). سيُحذف الأقدم تلقائياً.', { icon: '⚠️', duration: 3500 });
     }
-    persist([{ id: Date.now(), name, filters }, ...saves].slice(0, 5));
+    if (useDb) {
+      if (saves.length >= 5) {
+        const oldest = saves[saves.length - 1];
+        await supabase.from('user_preferences').delete().eq('id', oldest.id);
+        setSaves(prev => prev.slice(0, prev.length - 1));
+      }
+      const { data } = await supabase.from('user_preferences').insert({
+        user_id: user.id, type: 'saved_search', name,
+        payload: { filters, alertEnabled: false }, active: true,
+      }).select().single();
+      if (data) setSaves(prev => [{ id: data.id, name: data.name, filters }, ...prev].slice(0, 5));
+    } else {
+      const next = [{ id: Date.now(), name, filters }, ...saves].slice(0, 5);
+      setSaves(next);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+    }
   };
-  const remove = (id) => {
-    persist(saves.filter((s) => s.id !== id));
-    const next = { ...alerts }; delete next[id]; persistAlerts(next);
+
+  const remove = async (id) => {
+    setSaves(prev => prev.filter(s => s.id !== id));
+    setAlerts(prev => { const n = { ...prev }; delete n[id]; return n; });
+    if (useDb) {
+      await supabase.from('user_preferences').delete().eq('id', id).eq('user_id', user.id);
+    } else {
+      const next = saves.filter(s => s.id !== id);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      const nextAlerts = { ...alerts }; delete nextAlerts[id];
+      localStorage.setItem(LS_ALERTS, JSON.stringify(nextAlerts));
+    }
   };
-  const toggleAlert = (id) => {
-    const next = { ...alerts, [id]: !alerts[id] };
-    persistAlerts(next);
-    return !alerts[id];
+
+  const toggleAlert = async (id) => {
+    const newVal = !alerts[id];
+    setAlerts(prev => ({ ...prev, [id]: newVal }));
+    if (useDb) {
+      const pref = saves.find(s => s.id === id);
+      if (pref) {
+        await supabase.from('user_preferences').update({
+          payload: { filters: pref.filters, alertEnabled: newVal },
+        }).eq('id', id);
+      }
+    } else {
+      localStorage.setItem(LS_ALERTS, JSON.stringify({ ...alerts, [id]: newVal }));
+    }
+    return newVal;
   };
+
   return { saves, save, remove, alerts, toggleAlert };
 }
 
@@ -64,6 +120,7 @@ function describeFilters(f) {
   if (f.status  !== 'all') parts.push(f.status);
   if (f.furnished === true)  parts.push('مفروش');
   if (f.furnished === false && f.furnished !== null) parts.push('غير مفروش');
+  if (f.minBaths > 0) parts.push(`${f.minBaths}+ حمامات`);
   if (f.minPrice) parts.push(`من ${Number(f.minPrice).toLocaleString()} $`);
   if (f.maxPrice) parts.push(`إلى ${Number(f.maxPrice).toLocaleString()} $`);
   if (f.minArea)  parts.push(`مساحة من ${f.minArea} م²`);
@@ -90,6 +147,8 @@ function FilterSidebar({ filters, setFilter, onReset, applyFilters, savedSearche
   const [savingMode, setSavingMode] = useState(false);
   const [saveName,   setSaveName]   = useState('');
   const [showSaved,  setShowSaved]  = useState(true);
+  const { sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const activeSponsor = sponsorships.find(s => s.type === 'properties' && s.active);
 
   const handleSave = () => {
     const name = saveName.trim() || describeFilters(filters);
@@ -141,7 +200,7 @@ function FilterSidebar({ filters, setFilter, onReset, applyFilters, savedSearche
         {/* Cities multiselect */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-charcoal/50 text-xs font-semibold uppercase tracking-wider">المدينة</p>
+            <p className="text-charcoal/50 text-xs font-semibold uppercase tracking-wider">المحافظة</p>
             {filters.cities.length > 0 && (
               <button onClick={() => setFilter('cities', [])} className="text-[10px] text-brand hover:underline">
                 مسح ({filters.cities.length})
@@ -204,7 +263,7 @@ function FilterSidebar({ filters, setFilter, onReset, applyFilters, savedSearche
 
         {/* Rooms */}
         <div className="mb-5">
-          <p className="text-charcoal/50 text-xs font-semibold mb-2 uppercase tracking-wider">عدد الغرف (الحد الأدنى)</p>
+          <p className="text-charcoal/50 text-xs font-semibold mb-2 uppercase tracking-wider">غرف النوم (الحد الأدنى)</p>
           <div className="grid grid-cols-5 gap-1">
             {[[0, 'الكل'], [1, '1+'], [2, '2+'], [3, '3+'], [4, '4+']].map(([v, l]) => (
               <button key={v} onClick={() => setFilter('minRooms', v)}
@@ -215,9 +274,33 @@ function FilterSidebar({ filters, setFilter, onReset, applyFilters, savedSearche
           </div>
         </div>
 
+        {/* Bathrooms */}
+        <div className="mb-5">
+          <p className="text-charcoal/50 text-xs font-semibold mb-2 uppercase tracking-wider">الحمامات (الحد الأدنى)</p>
+          <div className="grid grid-cols-4 gap-1">
+            {[[0, 'الكل'], [1, '1+'], [2, '2+'], [3, '3+']].map(([v, l]) => (
+              <button key={v} onClick={() => setFilter('minBaths', v)}
+                className={`py-1.5 text-xs rounded-lg border font-medium transition-all ${filters.minBaths === v ? 'bg-brand border-brand text-white' : 'border-navy/15 text-charcoal/60 hover:border-brand/40 hover:text-brand'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Price range */}
         <div className="mb-4">
           <p className="text-charcoal/50 text-xs font-semibold mb-2 uppercase tracking-wider">نطاق السعر ($)</p>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            {[['< 50K', '', '50000'], ['50–100K', '50000', '100000'], ['100–200K', '100000', '200000'], ['200K+', '200000', '']].map(([l, mn, mx]) => {
+              const active = filters.minPrice === mn && filters.maxPrice === mx;
+              return (
+                <button key={l} onClick={() => { setFilter('minPrice', mn); setTimeout(() => setFilter('maxPrice', mx), 0); }}
+                  className={`py-1 text-[10px] rounded-lg border font-medium transition-all ${active ? 'bg-brand border-brand text-white' : 'border-navy/15 text-charcoal/60 hover:border-brand/40 hover:text-brand'}`}>
+                  {l}
+                </button>
+              );
+            })}
+          </div>
           <div className="flex gap-2">
             <input type="number" placeholder="من" value={filters.minPrice}
               onChange={e => setFilter('minPrice', e.target.value)}
@@ -352,6 +435,11 @@ function FilterSidebar({ filters, setFilter, onReset, applyFilters, savedSearche
           ))}
         </div>
       </div>
+
+      <SponsorCard
+        sponsor={activeSponsor}
+        onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+      />
     </aside>
   );
 }
@@ -518,7 +606,7 @@ function Pagination({ page, totalPages, onChange }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-const INIT_FILTERS = { cities: [], type: 'all', subtype: 'all', status: 'all', furnished: null, minPrice: '', maxPrice: '', minArea: '', maxArea: '', search: '', minRooms: 0, verifiedOnly: false, showAVM: false, mapBounds: null };
+const INIT_FILTERS = { cities: [], type: 'all', subtype: 'all', status: 'all', furnished: null, minPrice: '', maxPrice: '', minArea: '', maxArea: '', search: '', minRooms: 0, minBaths: 0, verifiedOnly: false, showAVM: false, mapBounds: null };
 const PAGE_SIZE = 12;
 
 function loadSessionFilters() {
@@ -529,7 +617,7 @@ function loadSessionFilters() {
 }
 
 export default function PropertiesPage() {
-  const { properties } = useGlobalData();
+  const { properties, propertiesLoading } = useGlobalData();
   const [filters, setFilters] = useState(loadSessionFilters);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
   const [sort, setSort] = useState('newest');
@@ -604,7 +692,8 @@ export default function PropertiesPage() {
     if (filters.maxPrice)              r = r.filter(p => p.price <= Number(filters.maxPrice));
     if (filters.minArea)               r = r.filter(p => p.area >= Number(filters.minArea));
     if (filters.maxArea)               r = r.filter(p => p.area <= Number(filters.maxArea));
-    if (filters.minRooms > 0)         r = r.filter(p => (p.rooms ?? 0) >= filters.minRooms);
+    if (filters.minRooms > 0)          r = r.filter(p => (p.rooms ?? 0) >= filters.minRooms);
+    if (filters.minBaths > 0)          r = r.filter(p => (p.baths ?? 0) >= filters.minBaths);
     if (filters.verifiedOnly)          r = r.filter(p => p.verified);
     if (filters.showAVM)               r = r.filter(p => p.avm != null);
     if (filters.mapBounds) {
@@ -650,12 +739,12 @@ export default function PropertiesPage() {
       <PageHero
         num="01"
         eyebrow="سوق العقارات السوري"
-        title={<h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-[1.4]">{properties.length}+ عقار<br /><span className="text-brand">موثّق ومحقّق.</span></h1>}
+        title={<h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-[1.4]">{propertiesLoading ? '...' : properties.length}+ عقار<br /><span className="text-brand">موثّق ومحقّق.</span></h1>}
         subtitle="آلاف العقارات في كل المحافظات السورية — موثّقة ومفحوصة وأسعارها شفافة"
         bgImage="/syria-hero.jpg"
         breadcrumb={[{ label: 'الرئيسية', to: '/' }, { label: 'العقارات' }]}
         stats={[
-          { value: `${properties.length}+`, label: 'عقار مسجّل' },
+          { value: propertiesLoading ? '...' : `${properties.length}+`, label: 'عقار مسجّل' },
           { value: '14', label: 'محافظة سورية', color: 'text-brand' },
           { value: '98%', label: 'دقة التقييم', color: 'text-emerald-400' },
           { value: 'IVS 2025', label: 'معيار التقييم', color: 'text-amber-400' },
@@ -778,7 +867,7 @@ export default function PropertiesPage() {
               {/* Properties List */}
               <div className={viewMode === 'map' ? 'lg:w-1/2 xl:w-[60%] order-2 lg:order-1' : 'w-full'}>
                 <AnimatePresence mode="popLayout">
-                  {loading ? (
+                  {loading || propertiesLoading ? (
                     <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className={`grid gap-5 ${viewMode === 'map' ? 'sm:grid-cols-2' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
                       {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}

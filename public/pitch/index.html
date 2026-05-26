@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RESURGO — عرض الاستثمار 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#1f2a38;--brand:#5979bb;--cta:#f37124;--cream:#f7f1eb;
+  --cream2:#ede6dc;--white:#ffffff;--glass:rgba(255,255,255,0.06);
+  --glass-border:rgba(255,255,255,0.12);
+}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Cairo',sans-serif;background:var(--navy)}
+
+/* ── DECK WRAPPER ── */
+#deck{width:100vw;height:100vh;position:relative;overflow:hidden}
+
+/* ── SLIDES ── */
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .7s cubic-bezier(.4,0,.2,1),transform .7s cubic-bezier(.4,0,.2,1);
+  transform:translateX(-60px);
+  padding:40px 60px;
+  overflow:hidden;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.slide.exit-left{opacity:0;transform:translateX(60px)}
+.slide.exit-right{opacity:0;transform:translateX(-60px)}
+
+/* slide backgrounds */
+.bg-dark{background:var(--navy)}
+.bg-darker{background:#151e29}
+.bg-light{background:var(--cream)}
+.bg-brand{background:linear-gradient(135deg,#1a2535 0%,#2a3f5f 100%)}
+.bg-cta{background:linear-gradient(135deg,#c95d1a 0%,var(--cta) 60%,#e8841f 100%)}
+
+/* ── NOISE TEXTURE overlay ── */
+.slide::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:.4;pointer-events:none;z-index:0;
+}
+.slide>*{position:relative;z-index:1}
+
+/* ── LOGO MARK ── */
+.logo-mark{position:absolute;top:28px;right:40px;display:flex;align-items:center;gap:10px;z-index:10}
+.logo-mark img{width:72px;height:auto;opacity:.9}
+
+/* ── PROGRESS BAR ── */
+#progress-bar{
+  position:fixed;top:0;left:0;height:3px;
+  background:linear-gradient(90deg,var(--cta),var(--brand));
+  transition:width .5s ease;z-index:100;border-radius:0 2px 2px 0;
+}
+
+/* ── SLIDE COUNTER ── */
+#slide-counter{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:8px;z-index:100;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);transition:all .3s ease;cursor:pointer}
+.dot.active{background:var(--brand);width:24px;border-radius:3px}
+
+/* ── NAV ARROWS ── */
+.nav-btn{
+  position:fixed;top:50%;transform:translateY(-50%);
+  width:44px;height:44px;border-radius:50%;
+  border:none;
+  background:var(--navy);
+  color:#fff;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s ease;z-index:100;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+  opacity:.75;
+}
+.nav-btn:hover{background:var(--brand);opacity:1;transform:translateY(-50%) scale(1.08)}
+#btn-prev{right:20px}
+#btn-next{left:20px}
+
+/* ── TYPOGRAPHY ── */
+.slide-label{font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--brand);margin-bottom:16px}
+.slide-label.light{color:var(--cta)}
+h1.hero{font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,8vw,96px);line-height:1;color:#fff;letter-spacing:1px}
+h1.hero span{color:var(--cta)}
+h2.title{font-size:clamp(28px,4vw,44px);font-weight:900;color:#fff;line-height:1.15}
+h2.title.dark{color:var(--navy)}
+h3.sub{font-size:clamp(14px,2vw,18px);font-weight:400;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6;max-width:640px;text-align:center}
+h3.sub.dark{color:rgba(31,42,56,.55)}
+
+/* ── DIVIDER ── */
+.divider{width:48px;height:3px;background:var(--brand);border-radius:2px;margin:20px auto}
+.divider.cta{background:var(--cta)}
+
+/* ── GLASS CARD ── */
+.gcard{
+  background:var(--glass);border:1px solid var(--glass-border);
+  border-radius:16px;backdrop-filter:blur(8px);padding:24px 28px;
+}
+.gcard.light{background:rgba(31,42,56,.06);border-color:rgba(31,42,56,.1)}
+
+/* ── GRID LAYOUTS ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:900px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:960px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:1000px}
+
+/* ── PROBLEM ITEMS ── */
+.prob-item{
+  display:flex;align-items:flex-start;gap:14px;padding:14px 18px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+}
+.prob-icon{width:36px;height:36px;border-radius:10px;background:rgba(243,113,36,.15);
+  border:1px solid rgba(243,113,36,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prob-text{font-size:14px;color:rgba(255,255,255,.75);line-height:1.5;font-weight:500}
+
+/* ── BIG NUMBER ── */
+.big-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(42px,6vw,72px);color:var(--cta);line-height:1}
+.big-num.brand{color:var(--brand)}
+.big-num.white{color:#fff}
+.num-label{font-size:12px;color:rgba(255,255,255,.45);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.num-desc{font-size:15px;color:rgba(255,255,255,.7);font-weight:600;margin-top:6px}
+
+/* ── FEATURE PILLS ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:780px;width:100%}
+.feat-pill{
+  background:rgba(89,121,187,.12);border:1px solid rgba(89,121,187,.25);
+  border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:10px;
+}
+.feat-pill .fi{font-size:18px}
+.feat-pill span{font-size:13px;font-weight:700;color:rgba(255,255,255,.85)}
+
+/* ── TABLE ── */
+.pitch-table{width:100%;border-collapse:collapse;font-size:13px}
+.pitch-table th{padding:10px 14px;background:rgba(89,121,187,.2);color:rgba(255,255,255,.6);
+  font-weight:700;letter-spacing:.5px;font-size:11px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.08)}
+.pitch-table td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.8)}
+.pitch-table tr:last-child td{border-bottom:none}
+.pitch-table tr:hover td{background:rgba(255,255,255,.03)}
+.pitch-table.light th{background:rgba(31,42,56,.08);color:rgba(31,42,56,.5)}
+.pitch-table.light td{color:var(--navy);border-color:rgba(31,42,56,.06)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.5px}
+.badge.green{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.badge.red{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.badge.blue{background:rgba(89,121,187,.2);color:#93b4ef;border:1px solid rgba(89,121,187,.3)}
+
+/* ── TIMELINE ── */
+.timeline{display:flex;flex-direction:column;gap:0;width:100%;max-width:800px}
+.tl-item{display:flex;gap:20px;align-items:flex-start;padding-bottom:20px;position:relative}
+.tl-item::before{content:'';position:absolute;right:18px;top:36px;bottom:0;width:2px;background:rgba(255,255,255,.08)}
+.tl-item:last-child::before{display:none}
+.tl-dot{width:36px;height:36px;border-radius:50%;background:var(--brand);border:3px solid rgba(89,121,187,.3);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff}
+.tl-content{flex:1}
+.tl-period{font-size:11px;color:var(--cta);font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.tl-title{font-size:15px;font-weight:800;color:#fff;margin:2px 0}
+.tl-points{font-size:12px;color:rgba(255,255,255,.5);line-height:1.7}
+
+/* ── TEAM CARD ── */
+.team-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px;text-align:center}
+.team-avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 14px;
+  background:linear-gradient(135deg,var(--brand),#3d5a9a);
+  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;
+  border:3px solid rgba(89,121,187,.4)}
+.team-name{font-size:16px;font-weight:900;color:#fff}
+.team-role{font-size:12px;color:var(--brand);font-weight:700;margin-top:3px}
+.team-desc{font-size:11px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.6}
+
+/* ── CHART CONTAINER ── */
+.chart-wrap{position:relative;width:100%;height:180px}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse-ring{0%{transform:scale(.95);opacity:1}70%{transform:scale(1.15);opacity:0}100%{transform:scale(1.15);opacity:0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+
+.anim-1{animation:fadeUp .6s .1s both}
+.anim-2{animation:fadeUp .6s .2s both}
+.anim-3{animation:fadeUp .6s .3s both}
+.anim-4{animation:fadeUp .6s .4s both}
+.anim-5{animation:fadeUp .6s .5s both}
+.anim-6{animation:fadeUp .6s .6s both}
+.anim-scale{animation:scaleIn .6s .2s both}
+
+/* ── PARTICLES (cover) ── */
+#particles{position:absolute;inset:0;overflow:hidden;z-index:0}
+.particle{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle,rgba(89,121,187,.6),transparent);
+  animation:float linear infinite;
+}
+
+/* ── COVER SPECIFIC ── */
+.cover-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(89,121,187,.15);border:1px solid rgba(89,121,187,.35);
+  border-radius:100px;padding:8px 20px;
+  font-size:12px;font-weight:700;color:var(--brand);letter-spacing:1px;
+  margin-bottom:24px;
+}
+.cover-badge::before{content:'●';color:var(--cta);font-size:8px;animation:pulse-ring 1.5s infinite}
+.cover-subtitle{font-size:16px;color:rgba(255,255,255,.5);margin-top:16px;font-weight:400}
+.cover-meta{display:flex;gap:32px;margin-top:40px;padding-top:32px;border-top:1px solid rgba(255,255,255,.08)}
+.cover-meta-item{text-align:center}
+.cover-meta-item .val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--cta)}
+.cover-meta-item .key{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:1px;text-transform:uppercase}
+
+/* ── ASK SLIDE ── */
+.ask-amount{
+  font-family:'Bebas Neue',sans-serif;font-size:clamp(72px,12vw,120px);
+  background:linear-gradient(135deg,#fff 0%,var(--cream) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  line-height:1;
+}
+.ask-pill{
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:100px;padding:10px 24px;
+  font-size:14px;font-weight:700;color:#fff;display:inline-block;margin:8px 6px;
+}
+
+/* ── MOAT BOX ── */
+.moat-box{
+  background:linear-gradient(135deg,rgba(89,121,187,.15),rgba(89,121,187,.05));
+  border:1px solid rgba(89,121,187,.3);border-radius:12px;
+  padding:16px 20px;text-align:center;
+}
+.moat-box p{font-size:13px;color:rgba(255,255,255,.65);line-height:1.6}
+.moat-box strong{color:var(--brand)}
+
+/* ── SCREEN MOCK ── */
+.screen-mock{
+  background:#0d1520;border:1px solid rgba(255,255,255,.1);border-radius:12px;
+  overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.5);width:100%;max-width:520px;
+}
+.screen-bar{height:32px;background:#1a2535;display:flex;align-items:center;gap:6px;padding:0 14px}
+.screen-bar span{width:10px;height:10px;border-radius:50%}
+.screen-bar span:nth-child(1){background:#ff5f57}
+.screen-bar span:nth-child(2){background:#ffbd2e}
+.screen-bar span:nth-child(3){background:#28c840}
+.screen-url{flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:18px;margin:0 10px;
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,.3)}
+.screen-content{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.screen-card{background:rgba(255,255,255,.04);border-radius:8px;padding:12px;border:1px solid rgba(255,255,255,.06)}
+.screen-card .sc-label{font-size:9px;color:rgba(255,255,255,.3);margin-bottom:4px}
+.screen-card .sc-val{font-size:18px;font-weight:900;color:var(--cta);font-family:'Bebas Neue',sans-serif}
+.screen-card .sc-trend{font-size:9px;color:#4ade80}
+.screen-hero{grid-column:1/-1;background:linear-gradient(135deg,rgba(89,121,187,.2),rgba(31,42,56,.5));
+  border-radius:8px;padding:14px;text-align:center;border:1px solid rgba(89,121,187,.2)}
+.screen-hero .sh-title{font-size:13px;font-weight:900;color:#fff}
+.screen-hero .sh-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px}
+
+/* ── USE OF FUNDS ── */
+.fund-bar{height:8px;border-radius:100px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px}
+.fund-fill{height:100%;border-radius:100px;transition:width 1s .5s ease}
+.fund-item{margin-bottom:16px}
+.fund-row{display:flex;justify-content:space-between;align-items:center}
+.fund-name{font-size:13px;font-weight:700;color:rgba(255,255,255,.8)}
+.fund-pct{font-size:13px;font-weight:900;color:var(--cta)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .slide{padding:24px 20px}
+  .grid-3,.grid-4{grid-template-columns:1fr 1fr}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .nav-btn{display:none}
+  h1.hero{font-size:48px}
+}
+
+/* ── SWIPE HINT ── */
+#swipe-hint{
+  position:fixed;bottom:52px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:rgba(255,255,255,.25);letter-spacing:1px;
+  animation:fadeUp .5s 2s both;
+}
+
+/* ── PDF BUTTON ── */
+#pdf-btn{
+  position:fixed;top:24px;left:24px;z-index:200;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:11px;font-weight:700;
+  padding:8px 16px;border-radius:8px;cursor:pointer;letter-spacing:.5px;
+  transition:all .2s ease;backdrop-filter:blur(8px);
+}
+#pdf-btn:hover{background:rgba(255,255,255,.15);color:#fff}
+@media print{
+  #pdf-btn,#slide-counter,.nav-btn,#swipe-hint,#progress-bar{display:none!important}
+  .slide{position:relative!important;opacity:1!important;transform:none!important;
+    page-break-after:always;height:100vh;pointer-events:all!important}
+  #deck{overflow:visible!important;height:auto!important}
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="pdf-btn" onclick="window.print()">⬇ تصدير PDF</button>
+
+<div id="deck">
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1 — COVER
+══════════════════════════════════════════════ -->
+<div class="slide bg-darker active" id="s1">
+  <div id="particles"></div>
+
+  <div class="logo-mark">
+    <img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px">
+    <div class="slide-label anim-1">01 — المشكلة</div>
+    <h2 class="title anim-2">سوق عقاري بـ <span style="color:var(--cta)">250 مليار دولار</span><br/>يُدار بدفاتر ورقية</h2>
+    <div class="divider anim-3"></div>
+    <div class="grid-2 anim-4" style="margin-top:24px;gap:12px">
+      <div class="prob-item"><div class="prob-icon">📊</div><div class="prob-text">لا قاعدة بيانات مركزية — أسعار غير موثقة وغير شفافة</div></div>
+      <div class="prob-item"><div class="prob-icon">🌍</div><div class="prob-text">6.5 مليون مغترب لا يستطيع الاستثمار أو الشراء عن بعد</div></div>
+      <div class="prob-item"><div class="prob-icon">⚖️</div><div class="prob-text">التخليص القانوني يستغرق 30-90 يوماً بإجراءات ورقية</div></div>
+      <div class="prob-item"><div class="prob-icon">🏚</div><div class="prob-text">لا تحقق من هوية البائع أو صحة وثائق الملكية</div></div>
+      <div class="prob-item"><div class="prob-icon">💸</div><div class="prob-text">70% من المعاملات نقدية بلا توثيق — بيئة خصبة للاحتيال</div></div>
+      <div class="prob-item"><div class="prob-icon">📉</div><div class="prob-text">لا مؤشرات أسعار موثوقة — قرارات استثمارية في الظلام</div></div>
+    </div>
+    <div class="anim-5" style="margin-top:20px;text-align:center;font-size:13px;color:rgba(255,255,255,.35)">
+      نسبة الرقمنة في القطاع العقاري السوري &nbsp;•&nbsp; <span style="color:var(--cta);font-weight:900;font-size:20px">2%</span> &nbsp;•&nbsp; أدنى مستوى في المنطقة
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3 — SOLUTION
+══════════════════════════════════════════════ -->
+<div class="slide bg-brand" id="s3">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:920px;text-align:center">
+    <div class="slide-label anim-1">02 — الحل</div>
+    <h2 class="title anim-2">البنية التحتية الرقمية<br/>الكاملة للسوق العقاري</h2>
+    <div class="divider anim-3"></div>
+    <div class="feat-grid anim-4" style="margin-top:24px">
+      <div class="feat-pill"><span class="fi">🏠</span><span>بيع وإيجار موثق</span></div>
+      <div class="feat-pill"><span class="fi">📈</span><span>استثمار وتحليلات</span></div>
+      <div class="feat-pill"><span class="fi">⚖️</span><span>تخليص قانوني رقمي</span></div>
+      <div class="feat-pill"><span class="fi">🏗</span><span>معدات إنشائية</span></div>
+      <div class="feat-pill"><span class="fi">💰</span><span>تمويل جماعي</span></div>
+      <div class="feat-pill"><span class="fi">📊</span><span>تقييم IVS معتمد</span></div>
+      <div class="feat-pill"><span class="fi">👷</span><span>توظيف متخصص</span></div>
+      <div class="feat-pill"><span class="fi">🏢</span><span>مطورون عقاريون</span></div>
+      <div class="feat-pill"><span class="fi">🗺</span><span>خريطة الطلب</span></div>
+    </div>
+    <div class="anim-5" style="margin-top:20px">
+      <div class="moat-box" style="max-width:620px;margin:0 auto">
+        <p>ليست منصة إعلانات — بل <strong>بنية تحتية بيانية</strong> يمكن بيعها للحكومات والبنوك والمستثمرين الدوليين في المستقبل</p>
+      </div>
+    </div>
+    <div class="anim-6" style="margin-top:14px">
+      <span style="font-size:13px;color:rgba(255,255,255,.4)">المنتج مبني ومنشور حالياً على </span>
+      <span style="color:var(--cta);font-weight:800;font-size:14px">resurgosy.com ←</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4 — MARKET SIZE
+══════════════════════════════════════════════ -->
+<div class="slide bg-dark" id="s4">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:920px">
+    <div class="slide-label anim-1">03 — حجم السوق</div>
+    <h2 class="title anim-2" style="text-align:center">الفرصة الأكبر في المنطقة</h2>
+    <div class="divider anim-3" style="margin:16px auto"></div>
+    <div class="grid-3 anim-4" style="margin-top:20px">
+      <div class="gcard" style="text-align:center;border-color:rgba(243,113,36,.3)">
+        <div style="font-size:11px;color:var(--cta);letter-spacing:2px;font-weight:800;margin-bottom:8px">TAM — السوق الكلي</div>
+        <div class="big-num">$250B+</div>
+        <div class="num-desc">إعادة الإعمار الكلية<br/>(World Bank 2024)</div>
+      </div>
+      <div class="gcard" style="text-align:center;border-color:rgba(89,121,187,.4)">
+        <div style="font-size:11px;color:var(--brand);letter-spacing:2px;font-weight:800;margin-bottom:8px">SAM — القابل للخدمة</div>
+        <div class="big-num brand">$4.2B</div>
+        <div class="num-desc">معاملات عقارية سنوية<br/>في المحافظات الرئيسية</div>
+      </div>
+      <div class="gcard" style="text-align:center;border-color:rgba(74,222,128,.3)">
+        <div style="font-size:11px;color:#4ade80;letter-spacing:2px;font-weight:800;margin-bottom:8px">SOM — الهدف (3 سنوات)</div>
+        <div class="big-num" style="color:#4ade80">$42M</div>
+        <div class="num-desc">1% من SAM<br/>هدف واقعي ومحافظ</div>
+      </div>
+    </div>
+    <div class="grid-4 anim-5" style="margin-top:16px">
+      <div class="gcard" style="text-align:center;padding:14px">
+        <div class="big-num white" style="font-size:36px">4,500+</div>
+        <div class="num-label">مكتب عقاري مرخص</div>
+      </div>
+      <div class="gcard" style="text-align:center;padding:14px">
+        <div class="big-num white" style="font-size:36px">6.5M</div>
+        <div class="num-label">مغترب سوري</div>
+      </div>
+      <div class="gcard" style="text-align:center;padding:14px">
+        <div class="big-num white" style="font-size:36px">$85K</div>
+        <div class="num-label">متوسط صفقة سكنية</div>
+      </div>
+      <div class="gcard" style="text-align:center;padding:14px">
+        <div class="big-num white" style="font-size:36px">180K</div>
+        <div class="num-label">عقار سنوياً</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5 — PRODUCT
+══════════════════════════════════════════════ -->
+<div class="slide bg-brand" id="s5">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="display:flex;gap:48px;align-items:center;width:100%;max-width:980px">
+    <div style="flex:1">
+      <div class="slide-label anim-1">04 — المنتج</div>
+      <h2 class="title anim-2">المنتج موجود<br/>ومنشور الآن</h2>
+      <div class="divider anim-3"></div>
+      <div class="anim-4" style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> 10 أقسام وظيفية مكتملة</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> بيانات سوق فصلية حية</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> تقييم RICS-compatible</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> PWA — يعمل بلا إنترنت ثابت</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> مساعد ذكي مدمج</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> تصدير بيانات CSV/JSON</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)"><span style="color:#4ade80;font-size:16px">✓</span> API layer جاهزة للتوسع</div>
+      </div>
+    </div>
+    <div class="screen-mock anim-scale" style="flex:1.1">
+      <div class="screen-bar">
+        <span></span><span></span><span></span>
+        <div class="screen-url">resurgosy.com</div>
+      </div>
+      <div class="screen-content">
+        <div class="screen-hero">
+          <div class="sh-title">🏗 أعد بناء سوريا حجراً فوق حجر</div>
+          <div class="sh-sub">المنصة العقارية الأولى في سوريا · مدعومة بالذكاء الاصطناعي</div>
+        </div>
+        <div class="screen-card">
+          <div class="sc-label">متوسط سعر م²</div>
+          <div class="sc-val">$487</div>
+          <div class="sc-trend">▲ 20.2% سنوياً</div>
+        </div>
+        <div class="screen-card">
+          <div class="sc-label">صفقات مرصودة</div>
+          <div class="sc-val">1,146</div>
+          <div class="sc-trend">Q2-2025</div>
+        </div>
+        <div class="screen-card">
+          <div class="sc-label">عائد إيجاري</div>
+          <div class="sc-val">8.2%</div>
+          <div class="sc-trend">▲ مرتفع</div>
+        </div>
+        <div class="screen-card">
+          <div class="sc-label">مشاريع تمويل</div>
+          <div class="sc-val">12+</div>
+          <div class="sc-trend">نشط</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 6 — BUSINESS MODEL
+══════════════════════════════════════════════ -->
+<div class="slide bg-light" id="s6">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px">
+    <div class="slide-label light anim-1">05 — نموذج الإيرادات</div>
+    <h2 class="title dark anim-2">مصادر إيرادات متعددة ومتدرجة</h2>
+    <div class="divider cta anim-3" style="margin:16px 0"></div>
+    <div class="anim-4" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(31,42,56,.08)">
+      <table class="pitch-table light" style="width:100%">
+        <thead><tr><th>مصدر الإيراد</th><th>النوع</th><th>التسعير</th><th>المرحلة</th></tr></thead>
+        <tbody>
+          <tr><td><b>اشتراك المكاتب العقارية</b></td><td>SaaS شهري</td><td>$30–80 / شهر</td><td><span class="badge green">الأولى ←</span></td></tr>
+          <tr><td><b>عمولة الصفقات</b></td><td>Take-rate</td><td>0.5% من العقد</td><td><span class="badge green">الأولى ←</span></td></tr>
+          <tr><td><b>تقرير تقييم IVS</b></td><td>خدمة</td><td>$150–400 / تقرير</td><td><span class="badge green">الأولى ←</span></td></tr>
+          <tr><td><b>تخليص قانوني</b></td><td>خدمة</td><td>$200–800 / ملف</td><td><span class="badge green">الأولى ←</span></td></tr>
+          <tr><td><b>إعلانات ممولة</b></td><td>Ads</td><td>CPM / CPC</td><td><span class="badge blue">الثانية</span></td></tr>
+          <tr><td><b>بيع بيانات السوق</b></td><td>Data licensing</td><td>$5K–50K / سنة</td><td><span class="badge blue">الثانية</span></td></tr>
+          <tr><td><b>API للمطورين والبنوك</b></td><td>SaaS B2B</td><td>$500–5K / شهر</td><td><span class="badge red">الثالثة</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="anim-5" style="display:flex;gap:24px;margin-top:16px;justify-content:center">
+      <div style="text-align:center"><div style="font-size:28px;font-weight:900;color:var(--cta)">18x</div><div style="font-size:11px;color:rgba(31,42,56,.5);letter-spacing:1px">LTV/CAC</div></div>
+      <div style="width:1px;background:rgba(31,42,56,.1)"></div>
+      <div style="text-align:center"><div style="font-size:28px;font-weight:900;color:var(--navy)">$120</div><div style="font-size:11px;color:rgba(31,42,56,.5);letter-spacing:1px">تكلفة الاستحواذ</div></div>
+      <div style="width:1px;background:rgba(31,42,56,.1)"></div>
+      <div style="text-align:center"><div style="font-size:28px;font-weight:900;color:var(--navy)">$2,160</div><div style="font-size:11px;color:rgba(31,42,56,.5);letter-spacing:1px">قيمة العميل 3 سنوات</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 7 — GO TO MARKET
+══════════════════════════════════════════════ -->
+<div class="slide bg-dark" id="s7">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:920px">
+    <div class="slide-label anim-1">06 — استراتيجية الدخول</div>
+    <h2 class="title anim-2">شبكة أرضية في 5 محافظات</h2>
+    <div class="divider anim-3"></div>
+    <div style="display:flex;gap:32px;margin-top:20px;align-items:flex-start">
+      <div class="anim-4" style="flex:1.2">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="gcard" style="border-color:rgba(243,113,36,.3)">
+            <div style="font-size:18px;margin-bottom:6px">🏛</div>
+            <div style="font-weight:800;color:#fff;font-size:14px">دمشق</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">المركز الرئيسي · 3 مكاتب</div>
+          </div>
+          <div class="gcard" style="border-color:rgba(89,121,187,.4)">
+            <div style="font-size:18px;margin-bottom:6px">🏙</div>
+            <div style="font-weight:800;color:#fff;font-size:14px">حلب</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">المركز الشمالي · 2 مكاتب</div>
+          </div>
+          <div class="gcard" style="border-color:rgba(89,121,187,.3)">
+            <div style="font-size:18px;margin-bottom:6px">🌊</div>
+            <div style="font-weight:800;color:#fff;font-size:14px">اللاذقية</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">الساحل السياحي · 2 مكاتب</div>
+          </div>
+          <div class="gcard" style="border-color:rgba(89,121,187,.3)">
+            <div style="font-size:18px;margin-bottom:6px">⚓</div>
+            <div style="font-weight:800;color:#fff;font-size:14px">طرطوس</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">المرفأ والاستثمار · 2 مكاتب</div>
+          </div>
+        </div>
+      </div>
+      <div class="anim-5" style="flex:1">
+        <div class="gcard" style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--brand);letter-spacing:1px;font-weight:800;margin-bottom:10px">نموذج الشراكة مع المكاتب</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:2">
+            ✓ برنامج إدارة مجاني 3 أشهر<br/>
+            ✓ تسجيل حصري على RESURGO<br/>
+            ✓ عمولة 15% على كل اشتراك<br/>
+            ✓ شارة "شريك معتمد RESURGO"
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:8px">هدف السنة الأولى</div>
+          <div style="display:flex;justify-content:center;gap:24px">
+            <div><div class="big-num" style="font-size:40px">150</div><div class="num-label">مكتب شريك</div></div>
+            <div><div class="big-num brand" style="font-size:40px">5</div><div class="num-label">مكاتب هندسية</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 8 — COMPETITION
+══════════════════════════════════════════════ -->
+<div class="slide bg-light" id="s8">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px">
+    <div class="slide-label light anim-1">07 — المشهد التنافسي</div>
+    <h2 class="title dark anim-2">RESURGO في مكانة لا ينافسها أحد</h2>
+    <div class="divider cta anim-3" style="margin:14px 0"></div>
+    <div class="anim-4" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(31,42,56,.08)">
+      <table class="pitch-table light">
+        <thead><tr><th>الميزة</th><th style="color:var(--cta)">RESURGO ★</th><th>منصات محلية</th><th>Bayut / Dubizzle</th></tr></thead>
+        <tbody>
+          <tr><td>تغطية سورية كاملة</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#16a34a">✓</td><td style="text-align:center;color:#dc2626">✗</td></tr>
+          <tr><td>تقييم IVS/RICS معتمد</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#dc2626">✗</td><td style="text-align:center">جزئي</td></tr>
+          <tr><td>تخليص قانوني رقمي</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#dc2626">✗</td><td style="text-align:center;color:#dc2626">✗</td></tr>
+          <tr><td>مؤشرات سوق فصلية</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#dc2626">✗</td><td style="text-align:center;color:#dc2626">✗</td></tr>
+          <tr><td>تمويل جماعي عقاري</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#dc2626">✗</td><td style="text-align:center;color:#dc2626">✗</td></tr>
+          <tr><td>API للبنوك والمطورين</td><td style="color:#16a34a;font-weight:900;text-align:center">✓</td><td style="text-align:center;color:#dc2626">✗</td><td style="text-align:center">جزئي</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="anim-5" style="margin-top:14px">
+      <div style="background:rgba(31,42,56,.06);border:1px solid rgba(31,42,56,.1);border-radius:12px;padding:14px 20px;text-align:center">
+        <span style="font-size:13px;color:var(--navy);font-weight:600">الخندق الدفاعي: </span>
+        <span style="font-size:13px;color:rgba(31,42,56,.6)">البيانات المتراكمة مع كل صفقة تجعل المنصة أقوى وأصعب منافسة — </span>
+        <strong style="color:var(--cta)">Data Moat لا يُشترى بالمال</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 9 — ROADMAP
+══════════════════════════════════════════════ -->
+<div class="slide bg-dark" id="s9">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:860px">
+    <div class="slide-label anim-1">08 — خارطة الطريق</div>
+    <h2 class="title anim-2">خطة المرحلة الأولى — 12 شهراً</h2>
+    <div class="divider anim-3"></div>
+    <div class="timeline anim-4" style="margin-top:20px">
+      <div class="tl-item">
+        <div class="tl-dot">1</div>
+        <div class="tl-content">
+          <div class="tl-period">الشهر 1–3</div>
+          <div class="tl-title">التأسيس القانوني</div>
+          <div class="tl-points">تسجيل الشركة · الحساب البنكي · رخصة التجارة الإلكترونية · عقود الشراكة</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--cta)">2</div>
+        <div class="tl-content">
+          <div class="tl-period">الشهر 2–4</div>
+          <div class="tl-title">بناء الشبكة الأرضية</div>
+          <div class="tl-points">5 مندوبين ميدانيين · 15 مكتب شريك أولي · 5 مكاتب هندسية معتمدة</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:#4ade80">3</div>
+        <div class="tl-content">
+          <div class="tl-period">الشهر 3–6</div>
+          <div class="tl-title">الإطلاق التشغيلي</div>
+          <div class="tl-points">100 عقار موثق · 5 تقارير تقييم · 10 ملفات تخليص · حملة المغتربين</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--brand)">4</div>
+        <div class="tl-content">
+          <div class="tl-period">الشهر 6–12</div>
+          <div class="tl-title">النمو والتوسع</div>
+          <div class="tl-points">150 مكتب شريك · 1,000 عقار · إيراد شهري مستقر · إعداد جولة Series A</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 10 — FINANCIALS
+══════════════════════════════════════════════ -->
+<div class="slide bg-brand" id="s10">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:960px">
+    <div class="slide-label anim-1">09 — الجدوى المالية</div>
+    <h2 class="title anim-2">مسار واضح نحو التعادل</h2>
+    <div class="divider anim-3"></div>
+    <div style="display:flex;gap:24px;margin-top:16px;align-items:flex-start">
+      <div class="anim-4" style="flex:1">
+        <div class="gcard" style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--brand);letter-spacing:1px;font-weight:800;margin-bottom:12px">التكاليف الشهرية</div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.7);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>رواتب الفريق (8 أشخاص)</span><span style="font-weight:700;color:#fff">$6,500</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.7);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>تقنية وبنية تحتية</span><span style="font-weight:700;color:#fff">$350</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.7);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>تسويق رقمي</span><span style="font-weight:700;color:#fff">$1,100</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.7);padding:5px 0"><span>مصاريف تشغيلية</span><span style="font-weight:700;color:#fff">$500</span></div>
+          <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);margin-top:6px"><span style="font-weight:800;color:#fff">الإجمالي</span><span style="font-weight:900;color:var(--cta);font-size:18px">$8,450/شهر</span></div>
+        </div>
+        <div class="gcard">
+          <div style="font-size:11px;color:var(--brand);letter-spacing:1px;font-weight:800;margin-bottom:10px">نقطة التعادل</div>
+          <div style="text-align:center"><div class="big-num" style="font-size:48px">52</div><div class="num-label">مكتب شريك نشط</div></div>
+          <div style="text-align:center;margin-top:8px;font-size:13px;color:rgba(255,255,255,.5)">يُتوقع تحقيقه في الشهر <span style="color:#4ade80;font-weight:900">9–11</span></div>
+        </div>
+      </div>
+      <div class="anim-5" style="flex:1.3">
+        <div class="gcard">
+          <div style="font-size:11px;color:var(--brand);letter-spacing:1px;font-weight:800;margin-bottom:14px">توقعات الإيرادات (سيناريو محافظ)</div>
+          <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">
+            <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:8px;padding:10px">
+              <div style="font-size:11px;color:rgba(255,255,255,.4)">السنة 1</div>
+              <div style="font-weight:900;color:#fff;font-size:16px">$52K</div>
+            </div>
+            <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:8px;padding:10px">
+              <div style="font-size:11px;color:rgba(255,255,255,.4)">السنة 2</div>
+              <div style="font-weight:900;color:var(--brand);font-size:16px">$324K</div>
+            </div>
+            <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:8px;padding:10px">
+              <div style="font-size:11px;color:rgba(255,255,255,.4)">السنة 3</div>
+              <div style="font-weight:900;color:var(--cta);font-size:16px">$1.07M</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 11 — USE OF FUNDS
+══════════════════════════════════════════════ -->
+<div class="slide bg-dark" id="s11">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="display:flex;gap:48px;align-items:center;width:100%;max-width:900px">
+    <div style="flex:1;text-align:center" class="anim-scale">
+      <div class="chart-wrap" style="height:220px"><canvas id="fundsChart"></canvas></div>
+      <div style="margin-top:12px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--cta)">$150,000</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);letter-spacing:1px">التمويل المطلوب</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:6px">يكفي لـ 14–16 شهراً</div>
+      </div>
+    </div>
+    <div style="flex:1.2" class="anim-4">
+      <div class="slide-label">10 — استخدام التمويل</div>
+      <h2 class="title" style="font-size:28px">توزيع الاستثمار</h2>
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="fund-item">
+        <div class="fund-row"><span class="fund-name">الفريق والمبيعات الميدانية</span><span class="fund-pct">45% · $67,500</span></div>
+        <div class="fund-bar"><div class="fund-fill" style="width:45%;background:linear-gradient(90deg,var(--cta),#e8841f)"></div></div>
+      </div>
+      <div class="fund-item">
+        <div class="fund-row"><span class="fund-name">التسويق وبناء العلامة</span><span class="fund-pct">25% · $37,500</span></div>
+        <div class="fund-bar"><div class="fund-fill" style="width:25%;background:linear-gradient(90deg,var(--brand),#7b9fd4)"></div></div>
+      </div>
+      <div class="fund-item">
+        <div class="fund-row"><span class="fund-name">التقنية والبنية التحتية</span><span class="fund-pct">15% · $22,500</span></div>
+        <div class="fund-bar"><div class="fund-fill" style="width:15%;background:linear-gradient(90deg,#4ade80,#22c55e)"></div></div>
+      </div>
+      <div class="fund-item">
+        <div class="fund-row"><span class="fund-name">التأسيس القانوني والإداري</span><span class="fund-pct">10% · $15,000</span></div>
+        <div class="fund-bar"><div class="fund-fill" style="width:10%;background:linear-gradient(90deg,#a78bfa,#8b5cf6)"></div></div>
+      </div>
+      <div class="fund-item">
+        <div class="fund-row"><span class="fund-name">احتياطي الطوارئ</span><span class="fund-pct">5% · $7,500</span></div>
+        <div class="fund-bar"><div class="fund-fill" style="width:5%;background:rgba(255,255,255,.3)"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 12 — RISKS
+══════════════════════════════════════════════ -->
+<div class="slide bg-light" id="s12">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px">
+    <div class="slide-label light anim-1">11 — إدارة المخاطر</div>
+    <h2 class="title dark anim-2">المخاطر وخطط الاحتواء</h2>
+    <div class="divider cta anim-3" style="margin:14px 0"></div>
+    <div class="anim-4" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(31,42,56,.08)">
+      <table class="pitch-table light">
+        <thead><tr><th>الخطر</th><th>الاحتمالية</th><th>خطة الاحتواء</th></tr></thead>
+        <tbody>
+          <tr><td><b>تغيير تشريعي مفاجئ</b></td><td><span class="badge blue">متوسطة</span></td><td>فريق قانوني محلي مرتبط + رصد تشريعي مستمر</td></tr>
+          <tr><td><b>بطء تبني المكاتب</b></td><td><span class="badge blue">متوسطة</span></td><td>نموذج Freemium 3 أشهر + عمولة مغرية للمبيعات</td></tr>
+          <tr><td><b>انقطاع الإنترنت</b></td><td><span class="badge red">مرتفعة</span></td><td>PWA + وضع Offline كامل مدمج في المنتج</td></tr>
+          <tr><td><b>منافسة خارجية</b></td><td><span class="badge green">منخفضة</span></td><td>البيانات المتراكمة خندق دفاعي يصعب تجاوزه</td></tr>
+          <tr><td><b>صعوبة التحصيل</b></td><td><span class="badge blue">متوسطة</span></td><td>دفع إلكتروني + نقاط تحصيل ميداني في المحافظات</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 13 — TEAM
+══════════════════════════════════════════════ -->
+<div class="slide bg-dark" id="s13">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px;text-align:center">
+    <div class="slide-label anim-1">12 — الفريق</div>
+    <h2 class="title anim-2">من يقود المشروع</h2>
+    <div class="divider anim-3" style="margin:14px auto"></div>
+    <div class="grid-3 anim-4" style="margin-top:20px">
+      <div class="team-card">
+        <div class="team-avatar">م</div>
+        <div class="team-name">المؤسس / CEO</div>
+        <div class="team-role">قيادة ورؤية استراتيجية</div>
+        <div class="team-desc">خبرة في السوق العقاري السوري · شبكة علاقات محلية وإقليمية</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar" style="background:linear-gradient(135deg,var(--cta),#c95d1a)">ت</div>
+        <div class="team-name">مدير تقني / CTO</div>
+        <div class="team-role">بناء المنتج والتقنية</div>
+        <div class="team-desc">بنى المنصة الكاملة من الصفر · React · Cloudflare · AI</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar" style="background:linear-gradient(135deg,#4ade80,#16a34a)">ق</div>
+        <div class="team-name">مستشار قانوني</div>
+        <div class="team-role">التشريع العقاري السوري</div>
+        <div class="team-desc">خبرة 10+ سنوات في القانون العقاري · علاقات مع الجهات الرسمية</div>
+      </div>
+    </div>
+    <div class="anim-5" style="margin-top:16px;padding:16px 24px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+      <span style="font-size:13px;color:rgba(255,255,255,.5)">بالتمويل المطلوب سيتوسع الفريق لـ </span>
+      <span style="color:#fff;font-weight:900">8 أشخاص</span>
+      <span style="font-size:13px;color:rgba(255,255,255,.5)"> بما يشمل 5 مندوبين ميدانيين ومدير تسويق متخصص</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 14 — VISION
+══════════════════════════════════════════════ -->
+<div class="slide bg-brand" id="s14">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="width:100%;max-width:900px;text-align:center">
+    <div class="slide-label anim-1">13 — الرؤية المستقبلية</div>
+    <h2 class="title anim-2">من منصة محلية<br/>إلى بنك بيانات دولي</h2>
+    <div class="divider anim-3" style="margin:14px auto"></div>
+    <div class="grid-3 anim-4" style="margin-top:20px">
+      <div class="gcard" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🇸🇾</div>
+        <div style="color:var(--cta);font-weight:800;font-size:13px;letter-spacing:1px">2026 — السنة 1</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin:8px 0">المنصة #1 في سوريا</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5)">400+ مكتب · 10,000 عقار موثق</div>
+      </div>
+      <div class="gcard" style="text-align:center;border-color:rgba(89,121,187,.5)">
+        <div style="font-size:28px;margin-bottom:8px">🏦</div>
+        <div style="color:var(--brand);font-weight:800;font-size:13px;letter-spacing:1px">2027 — السنة 2</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin:8px 0">بنك البيانات العقاري</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5)">بيانات للحكومات والبنوك والمستثمرين</div>
+      </div>
+      <div class="gcard" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🌍</div>
+        <div style="color:#4ade80;font-weight:800;font-size:13px;letter-spacing:1px">2028 — السنة 3</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin:8px 0">التوسع الإقليمي</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5)">العراق · الأردن · لبنان</div>
+      </div>
+    </div>
+    <div class="anim-5" style="margin-top:16px">
+      <div class="gcard" style="text-align:center;max-width:600px;margin:0 auto">
+        <div style="font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:8px">الخروج المتوقع للمستثمر</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.8)">استحواذ من منصة خليجية كبرى أو IPO &nbsp;·&nbsp; مضاعف محتمل <span style="color:var(--cta);font-weight:900;font-size:20px">8–15x</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 15 — THE ASK
+══════════════════════════════════════════════ -->
+<div class="slide bg-cta" id="s15">
+  <div class="logo-mark"><img src="/logo_white.svg" alt="RESURGO"></div>
+
+  <div style="text-align:center;max-width:780px">
+    <div class="slide-label anim-1" style="color:rgba(255,255,255,.7)">14 — فرصة الاستثمار</div>
+    <div class="ask-amount anim-2">$150,000</div>
+    <p class="anim-3" style="font-size:16px;color:rgba(255,255,255,.75);margin:8px 0">مقابل حصة تفاوضية 15–20% · تقييم قبل التمويل $700K</p>
+    <div class="divider anim-4" style="background:rgba(255,255,255,.3);margin:20px auto"></div>
+    <div class="anim-5" style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:24px">
+      <span class="ask-pill">✓ حصة في شركة مسجلة قانونياً</span>
+      <span class="ask-pill">✓ تقارير مالية ربع سنوية</span>
+      <span class="ask-pill">✓ حق الأولوية في الجولة التالية</span>
+      <span class="ask-pill">✓ وصول لبيانات السوق حصرياً</span>
+      <span class="ask-pill">✓ مقعد في مجلس الاستشاريين</span>
+    </div>
+    <div class="anim-6" style="padding-top:20px;border-top:1px solid rgba(255,255,255,.2)">
+      <div style="font-size:14px;color:rgba(255,255,255,.6);margin-bottom:6px">للتواصل والاستفسار</div>
+      <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:1px">resurgosy.com</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.5);margin-top:4px">info@resurgosy.com</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- NAV -->
+<button class="nav-btn" id="btn-prev">›</button>
+<button class="nav-btn" id="btn-next">‹</button>
+
+<!-- DOTS -->
+<div id="slide-counter"></div>
+
+<div id="swipe-hint">اسحب أو اضغط ◄ ► للتنقل</div>
+
+<script>
+const TOTAL = 15;
+let current = 1;
+let animating = false;
+
+// ── DOTS ──
+const counter = document.getElementById('slide-counter');
+for(let i=1;i<=TOTAL;i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.onclick = ()=>goTo(i);
+  counter.appendChild(d);
+}
+
+function goTo(n, dir){
+  if(animating || n===current || n<1 || n>TOTAL) return;
+  animating = true;
+  const prev = document.getElementById('s'+current);
+  const next = document.getElementById('s'+n);
+  const goingForward = n > current;
+
+  prev.classList.add(goingForward ? 'exit-left' : 'exit-right');
+  prev.classList.remove('active');
+
+  next.style.transform = goingForward ? 'translateX(-60px)' : 'translateX(60px)';
+  next.style.opacity = '0';
+  next.classList.add('active');
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      next.style.transform = '';
+      next.style.opacity = '';
+    });
+  });
+
+  // update dots
+  counter.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));
+
+  // progress bar
+  document.getElementById('progress-bar').style.width = (n/TOTAL*100)+'%';
+
+  setTimeout(()=>{
+    prev.classList.remove('exit-left','exit-right');
+    current = n;
+    animating = false;
+    if(n===10) initRevenueChart();
+    if(n===11) initFundsChart();
+  }, 750);
+}
+
+// keyboard
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown') goTo(current+1);
+  if(e.key==='ArrowRight'||e.key==='ArrowUp') goTo(current-1);
+});
+
+document.getElementById('btn-next').onclick = ()=>goTo(current+1);
+document.getElementById('btn-prev').onclick = ()=>goTo(current-1);
+
+// touch swipe
+let tsx=0;
+document.addEventListener('touchstart',e=>tsx=e.touches[0].clientX,{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx = tsx - e.changedTouches[0].clientX;
+  if(Math.abs(dx)>50) goTo(dx>0 ? current+1 : current-1);
+},{passive:true});
+
+// ── PARTICLES ──
+const p = document.getElementById('particles');
+for(let i=0;i<18;i++){
+  const el = document.createElement('div');
+  el.className='particle';
+  const s = Math.random()*80+20;
+  el.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;top:${Math.random()*100}%;opacity:${Math.random()*.12+.03};animation-duration:${Math.random()*12+8}s;animation-delay:${Math.random()*-10}s`;
+  p.appendChild(el);
+}
+
+// ── CHARTS ──
+let revenueInited=false, fundsInited=false;
+
+function initRevenueChart(){
+  if(revenueInited) return; revenueInited=true;
+  const ctx = document.getElementById('revenueChart');
+  if(!ctx) return;
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['S1 2026','S2 2026','2027','2028'],
+      datasets:[
+        {label:'اشتراكات',data:[5400,18000,108000,288000],backgroundColor:'rgba(89,121,187,0.7)',borderRadius:6},
+        {label:'عمولات',data:[3000,15000,144000,540000],backgroundColor:'rgba(243,113,36,0.7)',borderRadius:6},
+        {label:'خدمات',data:[1800,9000,72000,240000],backgroundColor:'rgba(74,222,128,0.5)',borderRadius:6},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(255,255,255,0.5)',font:{size:10,family:'Cairo'}}}},
+      scales:{
+        x:{stacked:true,ticks:{color:'rgba(255,255,255,0.4)',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{stacked:true,ticks:{color:'rgba(255,255,255,0.4)',font:{size:10},callback:v=>v>=1000?'$'+(v/1000)+'K':'$'+v},grid:{color:'rgba(255,255,255,0.05)'}}
+      }
+    }
+  });
+}
+
+function initFundsChart(){
+  if(fundsInited) return; fundsInited=true;
+  const ctx = document.getElementById('fundsChart');
+  if(!ctx) return;
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['فريق ومبيعات','تسويق','تقنية','قانوني','احتياطي'],
+      datasets:[{
+        data:[45,25,15,10,5],
+        backgroundColor:['#f37124','#5979bb','#4ade80','#a78bfa','rgba(255,255,255,0.2)'],
+        borderWidth:0,hoverOffset:8,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'72%',
+      plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,0.5)',font:{size:10,family:'Cairo'},padding:10}}}
+    }
+  });
+}
+
+// init progress bar
+document.getElementById('progress-bar').style.width=(1/TOTAL*100)+'%';
+
+// hide swipe hint after 4s
+setTimeout(()=>{const h=document.getElementById('swipe-hint');if(h)h.style.opacity='0';},4000);
+</script>
+</body>
+</html>

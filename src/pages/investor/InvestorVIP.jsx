@@ -360,16 +360,26 @@ export default function InvestorVIP() {
               <p className="text-charcoal/50 text-xs font-medium uppercase tracking-wide">الفرص المتاحة</p>
               <span className="text-xs bg-cta/10 text-cta border border-cta/20 px-2 py-0.5 rounded-full">{vipProjects.length} مشاريع</span>
             </div>
-            {vipProjects.map((p) => (
-              <ProjectCard key={p.id} project={p}
-                selected={currentProject?.id === p.id}
-                onSelect={(proj) => { setActiveProject(proj); setActiveTab('overview'); }} />
-            ))}
-            {currentProject && (
-              <button onClick={() => setInvestModalOpen(true)}
-                className="w-full mt-2 py-3 rounded-2xl bg-gradient-to-l from-brand to-navy text-white font-black text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all shadow-lg shadow-brand/20">
-                <Crown size={15} />استثمر في هذا المشروع
-              </button>
+            {vipProjects.length === 0 ? (
+              <div className="bg-white/60 border border-navy/10 rounded-2xl p-6 text-center">
+                <Crown size={28} className="mx-auto text-navy/20 mb-3" />
+                <p className="text-navy font-bold text-xs mb-1">لا توجد فرص VIP متاحة حالياً</p>
+                <p className="text-charcoal/45 text-[10px] leading-relaxed">ستُضاف مشاريع استثمارية حصرية قريباً — سيتم إعلامك فور توفّرها.</p>
+              </div>
+            ) : (
+              <>
+                {vipProjects.map((p) => (
+                  <ProjectCard key={p.id} project={p}
+                    selected={currentProject?.id === p.id}
+                    onSelect={(proj) => { setActiveProject(proj); setActiveTab('overview'); }} />
+                ))}
+                {currentProject && (
+                  <button onClick={() => setInvestModalOpen(true)}
+                    className="w-full mt-2 py-3 rounded-2xl bg-gradient-to-l from-brand to-navy text-white font-black text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all shadow-lg shadow-brand/20">
+                    <Crown size={15} />استثمر في هذا المشروع
+                  </button>
+                )}
+              </>
             )}
           </div>
 

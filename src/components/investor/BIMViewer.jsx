@@ -46,11 +46,11 @@ function APSViewerReal({ urn, token, onReady }) {
               viewerRef.current = viewer;
               onReady?.();
             },
-            (err) => console.error('APS load error', err)
+            () => {}
           );
         });
       })
-      .catch(() => console.warn('Failed to load Autodesk Forge Viewer SDK'));
+      .catch(() => {});
 
     return () => { viewerRef.current?.finish(); };
   }, [urn, token, onReady]);
@@ -119,7 +119,8 @@ function BIMPlaceholder({ projectName }) {
 
       {/* 3D viewport */}
       <div className="flex-1 relative overflow-hidden flex items-center justify-center"
-        onMouseMove={(e) => { if (e.buttons === 1) setAngle((a) => a + e.movementX * 0.5); }}>
+        onMouseMove={(e) => { if (e.buttons === 1) setAngle((a) => a + e.movementX * 0.5); }}
+        onWheel={(e) => { e.preventDefault(); setZoom((z) => Math.min(Math.max(z - e.deltaY * 0.001, 0.5), 1.8)); }}>
 
         {/* Grid floor */}
         <div className="absolute inset-0 opacity-10"
@@ -165,7 +166,7 @@ function BIMPlaceholder({ projectName }) {
       <div className="px-4 py-3 border-t border-slate-700/50 bg-slate-800/40 flex items-center gap-6 text-xs text-slate-400">
         <span className="flex items-center gap-1"><Layers size={12} className="text-brand" />5 طوابق · 850 م²</span>
         <span>IFC-2X3 · BIM Level 2</span>
-        <span className="mr-auto">اسحب للتدوير · Scroll للتكبير</span>
+        <span className="mr-auto">اسحب للتدوير · عجلة الفأرة للتكبير</span>
       </div>
     </div>
   );

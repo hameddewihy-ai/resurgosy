@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Image as ImageIcon } from 'lucide-react';
 import { useGlobalData } from '../../context/GlobalContext';
 
-export default function LazyImage({ src, alt, className, fallback = null }) {
+export default function LazyImage({ src, alt, className }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -37,6 +37,14 @@ export default function LazyImage({ src, alt, className, fallback = null }) {
       <div className={`relative overflow-hidden bg-slate-100 dark:bg-navy-900 flex flex-col items-center justify-center text-charcoal/30 p-4 border border-dashed border-charcoal/10 rounded-lg ${className}`}>
         <ImageIcon size={20} className="mb-1 opacity-40 animate-none" />
         <span className="text-[10px] font-bold text-center">توفير بيانات (تم التعليق)</span>
+      </div>
+    );
+  }
+
+  if (!src) {
+    return (
+      <div ref={imgRef} className={`relative overflow-hidden bg-navy/5 flex items-center justify-center ${className}`}>
+        <ImageIcon className="text-charcoal/20" size={24} />
       </div>
     );
   }

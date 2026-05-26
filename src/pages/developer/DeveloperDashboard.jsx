@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import SEO from '../../components/SEO';
 import toast from 'react-hot-toast';
+import { sendAdminAlert } from '../../utils/emailService';
 import { useGlobalData } from '../../context/GlobalContext';
 import GanttChart from '../../components/developer/GanttChart';
 import LeadScorePanel, { computeLeadScore, getScoreTier } from '../../components/developer/LeadScorePanel';
@@ -47,7 +48,7 @@ export default function DeveloperDashboard() {
               <p className="text-white/60 text-sm">لوحة تحكم المطور العقاري</p>
             </div>
           </div>
-          <button className="bg-brand hover:bg-white hover:text-navy text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
+          <button onClick={() => toast.success('ميزة إضافة مشروع ستتوفر قريباً — تواصل مع فريق RESURGO لتسجيل مشروعك')} className="bg-brand hover:bg-white hover:text-navy text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
             <Plus size={16} /> إضافة مشروع جديد
           </button>
         </div>
@@ -185,7 +186,7 @@ function BidsReviewModal({ tender, onClose }) {
           </button>
         </div>
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {bids.map((bid, i) => (
+          {bids.map((bid) => (
             <div key={bid.id}
               className={`p-4 rounded-2xl border transition-all ${bid.status === 'accepted' ? 'bg-green-50 border-green-200' : bid.status === 'rejected' ? 'bg-red-50/50 border-red-100 opacity-60' : 'bg-cream/40 border-navy/10 hover:border-brand/30'}`}>
               <div className="flex items-start justify-between gap-3 mb-3">
@@ -451,6 +452,13 @@ function TendersTab() {
   const handleAddTender = () => {
     addTender({ title: 'أعمال الديكورات الجبسية', type: 'إكساء وتشطيب', deadline: '2026-06-15', bidsCount: 0, status: 'مفتوح', developerId: 1 });
     toast.success('تم إضافة المناقصة بنجاح وانعكس ذلك في النظام المركزي');
+    
+    sendAdminAlert('admin@resurgo.com', 'طرح مناقصة جديدة', {
+      Title: 'أعمال الديكورات الجبسية',
+      Type: 'إكساء وتشطيب',
+      Deadline: '2026-06-15',
+      DeveloperId: 1
+    }).catch(() => {});
   };
 
   return (

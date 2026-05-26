@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import SEO from '../components/SEO';
 import { useGlobalData } from '../context/GlobalContext';
+import SponsorCard from '../components/ui/SponsorCard';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const MARKET_INDICES = [
@@ -276,25 +277,11 @@ function ValuationWizard() {
                 احصل على تقرير رسمي معتمد <ChevronRight size={14} />
               </Link>
 
-              {activeSponsor && (
-                <div className="bg-gradient-to-br from-brand/5 to-navy/[0.03] border border-brand/20 rounded-xl p-4 mt-4 relative overflow-hidden text-right">
-                  <div className="absolute top-2 left-2 text-[8px] bg-brand/10 text-brand px-2 py-0.5 rounded font-black border border-brand/20">
-                    رعاية مميزة
-                  </div>
-                  <p className="text-[9px] text-charcoal/40 font-bold mb-1">شريك تقييم معتمد: {activeSponsor.sponsor}</p>
-                  <h4 className="text-navy font-bold text-xs mb-1.5">{activeSponsor.title}</h4>
-                  <p className="text-charcoal/60 text-[10px] leading-relaxed mb-3">{activeSponsor.desc}</p>
-                  <a
-                    href={activeSponsor.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => incrementSponsorshipClicks && incrementSponsorshipClicks(activeSponsor.id)}
-                    className="inline-flex items-center justify-center gap-1.5 bg-brand hover:bg-navy text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:-translate-y-0.5 shadow-sm"
-                  >
-                    {activeSponsor.cta} ⚡
-                  </a>
-                </div>
-              )}
+              <SponsorCard
+                sponsor={activeSponsor}
+                onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+                className="mt-4"
+              />
 
               <div className="mt-4 pt-4 border-t border-navy/10 flex flex-col gap-2">
                 <p className="text-[10px] text-charcoal/40 font-bold uppercase tracking-wider text-right">خطوات استثمارية تالية:</p>

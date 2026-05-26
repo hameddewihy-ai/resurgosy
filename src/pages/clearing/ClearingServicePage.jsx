@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { SYRIA_GOVERNORATES as CITIES } from '../../data/syriaLocations';
 import { useGlobalData } from '../../context/GlobalContext';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -104,10 +105,6 @@ const SERVICES = [
   },
 ];
 
-const CITIES = [
-  'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية',
-  'طرطوس', 'إدلب', 'دير الزور', 'الرقة', 'الحسكة', 'السويداء', 'درعا', 'القنيطرة',
-];
 
 const STATS = [
   { val: '1,245+', label: 'معاملة مكتملة'     },

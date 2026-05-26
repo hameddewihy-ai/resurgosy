@@ -14,6 +14,7 @@ import InvestmentModal from '../components/invest/InvestmentModal';
 import { useNews } from '../hooks/useNews';
 import { URGENCY } from '../data/newsData';
 import IslamicFinanceCalc from '../components/ui/IslamicFinanceCalc';
+import SponsorCard from '../components/ui/SponsorCard';
 
 // ── Why Invest data ─────────────────────────────────────────────────────────
 const WHY_INVEST = [
@@ -427,7 +428,8 @@ function ProjectCard({ project, index, onInvest, isWatched, onToggleWatch }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function InvestPage() {
-  const { investmentProjects } = useGlobalData();
+  const { investmentProjects, sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const activeSponsor = sponsorships.find(s => s.type === 'invest' && s.active);
   const { articles } = useNews();
   const navigate = useNavigate();
 
@@ -555,6 +557,7 @@ export default function InvestPage() {
             </motion.div>
             <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.65, delay: 0.2 }} className="space-y-4">
               <ROICalc />
+              <SponsorCard sponsor={activeSponsor} onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)} />
               <IslamicFinanceCalc />
             </motion.div>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardHat, MapPin, Clock, CheckCircle, X, Star, FileText,
@@ -11,25 +11,12 @@ import IVSReportForm from '../../components/engineer/IVSReportForm';
 import SkillAssessmentModal from '../../components/engineer/SkillAssessmentModal';
 import FreelanceMarketplace from '../../components/engineer/FreelanceMarketplace';
 import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
+import { formatDate } from '../../utils/formatDate';
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const MOCK_TASKS = [
-  { id: 'task-001', property: 'شقة فاخرة — المزة',       city: 'دمشق',    lat: 33.5102, lng: 36.2486, status: 'pending',     priority: 'high',   owner: 'محمد الأسد',  type: 'residential', requested_at: '2025-05-12' },
-  { id: 'task-002', property: 'مبنى تجاري — باب توما',   city: 'دمشق',    lat: 33.5138, lng: 36.3165, status: 'in_progress', priority: 'medium', owner: 'سارة الكردي', type: 'commercial',  requested_at: '2025-05-11' },
-  { id: 'task-003', property: 'أرض صناعية — عدرا',       city: 'ريف دمشق', lat: 33.6021, lng: 36.5234, status: 'pending',     priority: 'low',    owner: 'خالد الحسن',  type: 'industrial',  requested_at: '2025-05-13' },
-  { id: 'task-004', property: 'فيلا — العزيزية',          city: 'حلب',     lat: 36.2119, lng: 37.1490, status: 'completed',  priority: 'high',   owner: 'رنا الخطيب',  type: 'residential', requested_at: '2025-05-08' },
-  { id: 'task-005', property: 'محل تجاري — الجميلية',    city: 'حلب',     lat: 36.1981, lng: 37.1601, status: 'pending',     priority: 'medium', owner: 'نور الدين',   type: 'commercial',  requested_at: '2025-05-10' },
-];
-
-const INITIAL_SKILLS = [
-  { id: 's1', name: 'SAP2000',          category: 'برامج هندسية',    proficiency: 4, status: 'verified', syndicate: true,  certUrl: '#' },
-  { id: 's2', name: 'ETABS',            category: 'برامج هندسية',    proficiency: 3, status: 'verified', syndicate: true,  certUrl: '#' },
-  { id: 's3', name: 'AutoCAD',          category: 'برامج هندسية',    proficiency: 4, status: 'verified', syndicate: false, certUrl: '#' },
-  { id: 's4', name: 'معايير IVS 2025', category: 'معايير دولية',    proficiency: 3, status: 'verified', syndicate: true,  certUrl: '#' },
-  { id: 's5', name: 'FIDIC',            category: 'إدارة مشاريع',    proficiency: 2, status: 'pending',  syndicate: false, certUrl: null },
-  { id: 's6', name: 'Primavera P6',     category: 'إدارة مشاريع',    proficiency: 2, status: 'pending',  syndicate: false, certUrl: null },
-  { id: 's7', name: 'الخرسانة المسلحة',category: 'مواد البناء',      proficiency: 4, status: 'verified', syndicate: true,  certUrl: '#' },
-];
+// ── Initial data (empty — populated by real platform requests) ────────────────
+const MOCK_TASKS    = [];
+const INITIAL_SKILLS = [];
 
 const MOCK_INSPECTION = [
   { id: 1, zone: 'الواجهة الخارجية',    observation: 'تشققات رأسية عند زاوية النافذة الجنوبية، عرض ~2mm',            risk: 'تسرب المياه وتآكل حديد التسليح على المدى المتوسط',       action: 'حقن إيبوكسي + طبقة عزل مائي خارجية',                    severity: 'medium' },
@@ -243,7 +230,7 @@ function SkillsMatrix() {
   const [assessSkill, setAssessSkill] = useState(null);
 
   const verified = skills.filter(s => s.status === 'verified').length;
-  const completion = Math.round((verified / skills.length) * 100);
+  const completion = skills.length ? Math.round((verified / skills.length) * 100) : 0;
 
   const addSkill = () => {
     if (!newSkill.name.trim()) { toast.error('أدخل اسم المهارة'); return; }
@@ -536,15 +523,53 @@ export default function EngineerDashboard() {
   const [filter, setFilter]         = useState('all');
   const [submittedTasks, setSubmittedTasks] = useState([]);
   const [activeTab, setActiveTab]   = useState('tasks');
+  const [dbReports, setDbReports]   = useState(null); // null = loading
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+
+  // Load past submitted reports from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('engineering_reports')
+      .select('*')
+      .eq('engineer_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setDbReports((data || []).map(r => ({
+          id:              r.id,
+          title:           r.title || 'تقرير معاينة',
+          propertyId:      r.property_id,
+          status:          r.status,
+          overallScore:    r.overall_score,
+          structuralScore: r.structural_score,
+          date:            formatDate(r.created_at),
+        })));
+      });
+  }, [user]);
 
   const openReport  = task => { setSelectedTask(task); setReportOpen(true); };
   const closeReport = () => setReportOpen(false);
 
   const handleReportSubmitted = data => {
-    setTasks(prev => prev.map(t => t.id === data.task.id ? { ...t, status: 'completed' } : t));
+    setTasks(prev => prev.map(t => t.id === data.task?.id ? { ...t, status: 'completed' } : t));
     setSubmittedTasks(prev => [data, ...prev]);
+    // Refresh DB reports list after new submission
+    if (isConfigured && user) {
+      supabase
+        .from('engineering_reports')
+        .select('id, title, property_id, status, overall_score, structural_score, created_at')
+        .eq('engineer_id', user.id)
+        .order('created_at', { ascending: false })
+        .then(({ data: rows }) => {
+          if (rows) setDbReports(rows.map(r => ({
+            id: r.id, title: r.title || 'تقرير معاينة',
+            propertyId: r.property_id, status: r.status,
+            overallScore: r.overall_score, structuralScore: r.structural_score,
+            date: formatDate(r.created_at),
+          })));
+        });
+    }
     setReportOpen(false);
     setSelectedTask(null);
   };
@@ -690,6 +715,77 @@ export default function EngineerDashboard() {
                   )}
                 </div>
               </div>
+
+              {/* ── Submitted Reports History (from Supabase) ── */}
+              {isConfigured && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText size={16} className="text-brand" />
+                    <h3 className="text-navy font-bold text-sm">سجل التقارير المرفوعة</h3>
+                    {dbReports !== null && (
+                      <span className="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full font-medium">
+                        {dbReports.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {dbReports === null ? (
+                    /* Loading skeleton */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="bg-white rounded-xl p-4 animate-pulse shadow-sm">
+                          <div className="h-3 bg-navy/10 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-navy/10 rounded w-1/2 mb-3" />
+                          <div className="flex gap-2">
+                            <div className="h-6 bg-navy/10 rounded-lg w-16" />
+                            <div className="h-6 bg-navy/10 rounded-lg w-16" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : dbReports.length === 0 ? (
+                    <div className="bg-white rounded-xl p-6 text-center text-charcoal/40 shadow-sm">
+                      <FileText size={24} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">لا توجد تقارير مرفوعة بعد</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {dbReports.map(r => (
+                        <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-navy/6 hover:border-brand/20 transition-colors">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <p className="text-navy font-bold text-sm leading-tight line-clamp-1">{r.title}</p>
+                            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              r.status === 'approved'  ? 'bg-green-100 text-green-700' :
+                              r.status === 'submitted' ? 'bg-brand/10 text-brand' :
+                              'bg-navy/10 text-charcoal/60'
+                            }`}>
+                              {r.status === 'approved' ? 'معتمد' : r.status === 'submitted' ? 'مرفوع' : 'مسودة'}
+                            </span>
+                          </div>
+                          <p className="text-charcoal/50 text-xs mb-3">{r.date}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {r.overallScore != null && (
+                              <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-medium ${
+                                r.overallScore >= 8 ? 'bg-green-50 text-green-700' :
+                                r.overallScore >= 5 ? 'bg-yellow-50 text-yellow-700' :
+                                'bg-red-50 text-red-700'
+                              }`}>
+                                <Star size={10} className="fill-current" />
+                                {r.overallScore}/10
+                              </span>
+                            )}
+                            {r.structuralScore != null && (
+                              <span className="text-xs px-2 py-1 rounded-lg bg-violet-50 text-violet-700 font-medium">
+                                إنشائي {r.structuralScore}/10
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
 

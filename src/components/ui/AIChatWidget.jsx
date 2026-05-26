@@ -105,11 +105,11 @@ export default function AIChatWidget() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setOpen(true)}
-            className="fixed bottom-20 left-4 z-40 w-14 h-14 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center hover:bg-navy transition-colors group"
+            className="fixed bottom-[84px] lg:bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center hover:bg-navy transition-colors group"
             aria-label="مساعد ذكي"
           >
             <MessageCircle size={24} className="text-white" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-cta rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -left-1 w-4 h-4 bg-cta rounded-full flex items-center justify-center">
               <Sparkles size={8} className="text-white" />
             </span>
           </motion.button>
@@ -124,7 +124,7 @@ export default function AIChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-            className="fixed bottom-4 left-4 z-50 w-[340px] max-h-[520px] bg-white rounded-3xl shadow-2xl shadow-navy/20 flex flex-col overflow-hidden"
+            className="fixed bottom-[84px] lg:bottom-4 right-2 lg:right-4 z-50 w-[calc(100vw-1rem)] max-w-[340px] max-h-[520px] bg-white rounded-3xl shadow-2xl shadow-navy/20 flex flex-col overflow-hidden"
             dir="rtl"
           >
             {/* Header */}

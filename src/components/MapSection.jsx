@@ -31,8 +31,9 @@ function MapBoundsManager({ properties }) {
   
   useMemo(() => {
     if (!properties || properties.length === 0) return;
-    
-    const bounds = L.latLngBounds(properties.map(p => [p.lat, p.lng]));
+    const valid = properties.filter(p => p.lat != null && p.lng != null);
+    if (valid.length === 0) return;
+    const bounds = L.latLngBounds(valid.map(p => [p.lat, p.lng]));
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
@@ -71,10 +72,10 @@ export default function MapSection({ properties = [] }) {
 
         <MapBoundsManager properties={properties} />
 
-        {properties.map((p) => (
-          <Marker 
-            key={p.id} 
-            position={[p.lat, p.lng]} 
+        {properties.filter(p => p.lat != null && p.lng != null).map((p) => (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
             icon={createCustomIcon(p.status)}
             eventHandlers={{
               click: () => setActivePopup(p.id)

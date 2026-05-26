@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, Component } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +33,7 @@ const NewsDetailPage        = lazy(() => import('./pages/NewsDetailPage'));
 const NewsCMSPage           = lazy(() => import('./pages/admin/NewsCMSPage'));
 const MasterAdminDashboard  = lazy(() => import('./pages/admin/MasterAdminDashboard'));
 const AddPropertyPage       = lazy(() => import('./pages/owner/AddPropertyPage'));
+const EditPropertyPage      = lazy(() => import('./pages/owner/EditPropertyPage'));
 const EngineerDashboard     = lazy(() => import('./pages/engineer/EngineerDashboard'));
 const InvestorVIP           = lazy(() => import('./pages/investor/InvestorVIP'));
 const ClearingDashboard     = lazy(() => import('./pages/clearing/ClearingDashboard'));
@@ -58,12 +59,31 @@ const DevelopersPage        = lazy(() => import('./pages/DevelopersPage'));
 const CrowdfundPage         = lazy(() => import('./pages/CrowdfundPage'));
 const CrowdfundDetailPage   = lazy(() => import('./pages/CrowdfundDetailPage'));
 const PlatformPerformancePage = lazy(() => import('./pages/PlatformPerformancePage'));
+const MarketReportsPage       = lazy(() => import('./pages/MarketReportsPage'));
 const DemandHeatmapPage     = lazy(() => import('./pages/DemandHeatmapPage'));
 const AboutPage             = lazy(() => import('./pages/AboutPage'));
 const PrivacyPage           = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage             = lazy(() => import('./pages/TermsPage'));
 const ProfilePage           = lazy(() => import('./pages/ProfilePage'));
 const ResetPasswordPage     = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const ConfirmPage           = lazy(() => import('./pages/auth/ConfirmPage'));
+
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-cream text-navy" dir="rtl">
+          <p className="text-2xl font-black">حدث خطأ في تحميل الصفحة</p>
+          <p className="text-charcoal/60 text-sm">يرجى إعادة تحميل الصفحة أو المحاولة لاحقاً</p>
+          <button onClick={() => window.location.reload()} className="bg-brand text-white font-bold px-6 py-2 rounded-xl text-sm">إعادة التحميل</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -89,6 +109,7 @@ function AppContent() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
+          <ErrorBoundary>
           <Suspense fallback={<PageSkeleton />}>
             <Routes location={location}>
               <Route path="/"                      element={<HomePage />} />
@@ -117,6 +138,7 @@ function AppContent() {
               <Route path="/crowdfund/:id"         element={<CrowdfundDetailPage />} />
               <Route path="/dashboard"             element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
               <Route path="/owner/add-property"    element={<PrivateRoute roles={['owner','admin']}><AddPropertyPage /></PrivateRoute>} />
+              <Route path="/owner/edit-property/:id" element={<PrivateRoute roles={['owner','admin']}><EditPropertyPage /></PrivateRoute>} />
               <Route path="/engineer/dashboard"    element={<PrivateRoute roles={['engineer','admin']}><EngineerDashboard /></PrivateRoute>} />
               <Route path="/investor/vip"          element={<PrivateRoute roles={['investor','admin']}><InvestorVIP /></PrivateRoute>} />
               <Route path="/clearing"              element={<ClearingServicePage />} />
@@ -127,6 +149,7 @@ function AppContent() {
               <Route path="/my-equipment"          element={<PrivateRoute><MyEquipmentPage /></PrivateRoute>} />
               <Route path="/handover/:contractId"  element={<PrivateRoute><HandoverProtocolPage /></PrivateRoute>} />
               <Route path="/heatmap"               element={<DemandHeatmapPage />} />
+              <Route path="/market-reports"        element={<MarketReportsPage />} />
               <Route path="/valuation"                      element={<ValuationPage />} />
               <Route path="/valuation-request"              element={<PrivateRoute><ValuationRequestPage /></PrivateRoute>} />
               <Route path="/valuation/appraiser-dashboard"  element={<PrivateRoute roles={['appraiser','admin']}><AppraiserDashboard /></PrivateRoute>} />
@@ -134,10 +157,12 @@ function AppContent() {
               <Route path="/privacy"               element={<PrivacyPage />} />
               <Route path="/terms"                 element={<TermsPage />} />
               <Route path="/profile"               element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+              <Route path="/auth/confirm"           element={<ConfirmPage />} />
               <Route path="/auth/reset-password"   element={<ResetPasswordPage />} />
               <Route path="*"                      element={<NotFoundPage />} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </motion.div>
       </AnimatePresence>
 

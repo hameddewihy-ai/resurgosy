@@ -6,10 +6,11 @@ import {
   Camera, MessageSquare, DollarSign, Home, Phone,
   Send, Globe, ChevronRight, Play,
   TrendingUp, Shield, Star, ArrowLeft, Package,
-  Building2, FileText
+  Building2, FileText, X as XIcon
 } from 'lucide-react';
 import { useGlobalData } from '../../context/GlobalContext';
 import toast from 'react-hot-toast';
+import RatingWidget from '../../components/ui/RatingWidget';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ function StatPill({ icon: Icon, label, value, accent = 'text-brand' }) {
   );
 }
 
-function MilestoneTracker({ milestones }) {
+function MilestoneTracker({ milestones, onUpdate }) {
   const [expanded, setExpanded] = useState(null);
 
   return (
@@ -53,7 +54,6 @@ function MilestoneTracker({ milestones }) {
         مراحل المشروع
       </h3>
       <div className="relative">
-        {/* vertical line */}
         <div className="absolute right-[22px] top-0 bottom-0 w-0.5 bg-white/10 z-0" />
 
         <div className="space-y-3">
@@ -62,12 +62,8 @@ function MilestoneTracker({ milestones }) {
             const isOpen = expanded === m.id;
             return (
               <motion.div key={m.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}>
-                <button
-                  onClick={() => setExpanded(isOpen ? null : m.id)}
-                  className="w-full text-right"
-                >
+                <button onClick={() => setExpanded(isOpen ? null : m.id)} className="w-full text-right">
                   <div className="flex items-start gap-4 relative z-10">
-                    {/* step dot */}
                     <div className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center ring-2 ${cfg.ring} ${
                       m.status === 'done' ? 'bg-emerald-500/20' : m.status === 'in_progress' ? 'bg-brand/20' : 'bg-slate-700/60'
                     }`}>
@@ -103,7 +99,7 @@ function MilestoneTracker({ milestones }) {
                 </button>
 
                 <AnimatePresence>
-                  {isOpen && m.notes && (
+                  {isOpen && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
@@ -111,8 +107,34 @@ function MilestoneTracker({ milestones }) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="mr-[60px] mt-2 mb-1 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-300 leading-relaxed">
-                        {m.notes}
+                      <div className="mr-[60px] mt-2 mb-1 space-y-2">
+                        {m.notes && (
+                          <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-300 leading-relaxed">
+                            {m.notes}
+                          </div>
+                        )}
+                        {/* Status update buttons */}
+                        {onUpdate && m.status !== 'done' && (
+                          <div className="flex gap-2">
+                            {m.status === 'pending' && (
+                              <button
+                                onClick={() => { onUpdate(m.id, { status: 'in_progress', progress: 10 }); setExpanded(null); }}
+                                className="text-xs bg-brand/20 border border-brand/30 text-brand rounded-lg px-3 py-1.5 hover:bg-brand/30 transition-colors font-medium"
+                              >
+                                بدء المرحلة
+                              </button>
+                            )}
+                            {m.status === 'in_progress' && (
+                              <button
+                                onClick={() => { onUpdate(m.id, { status: 'done', progress: 100, completedDate: new Date().toISOString().slice(0, 10) }); setExpanded(null); }}
+                                className="text-xs bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-1.5 hover:bg-emerald-500/30 transition-colors font-medium"
+                              >
+                                <CheckCircle size={11} className="inline ml-1" />
+                                تمييز كمكتملة
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -355,10 +377,13 @@ export default function ExpatDashboardPage() {
     finishingProjects = [],
     addFinishingProject,
     updateFinishingRFQStatus,
+    updateFinishingProjectMilestone,
     addFinishingProjectMessage,
     sypExchangeRate = 13000,
     setSypExchangeRate
   } = useGlobalData();
+
+  const [ratingOpen, setRatingOpen] = useState(false);
 
   // Combine projects and RFQs for selection
   const activeProjectsList = useMemo(() => {
@@ -620,7 +645,13 @@ export default function ExpatDashboardPage() {
 
                     {/* Left col — wider */}
                     <div className="lg:col-span-2 space-y-6">
-                      <MilestoneTracker milestones={project.milestones} />
+                      <MilestoneTracker
+                        milestones={project.milestones}
+                        onUpdate={(milestoneId, updates) => {
+                          updateFinishingProjectMilestone(project.id, milestoneId, updates);
+                          toast.success('تم تحديث حالة المرحلة');
+                        }}
+                      />
                       <MediaGallery media={project.media || []} />
                     </div>
 
@@ -697,21 +728,62 @@ export default function ExpatDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Contractor trust badge */}
-                      <div className="dark-card rounded-2xl p-4 flex items-center gap-3 gpu-transition">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                          <Shield size={18} className="text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-white">مقاول موثق ومعتمد</p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} size={10} className={i < Math.floor(project.contractorRating) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
-                            ))}
-                            <span className="text-[10px] text-slate-400 mr-1">{project.contractorRating}</span>
+                      {/* Contractor trust badge + rate button */}
+                      <div className="dark-card rounded-2xl p-4 gpu-transition">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Shield size={18} className="text-emerald-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-white">مقاول موثق ومعتمد</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} size={10} className={i < Math.floor(project.contractorRating) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
+                              ))}
+                              <span className="text-[10px] text-slate-400 mr-1">{project.contractorRating}</span>
+                            </div>
                           </div>
                         </div>
+                        <button
+                          onClick={() => setRatingOpen(true)}
+                          className="mt-3 w-full text-xs bg-amber-500/15 border border-amber-500/25 text-amber-400 rounded-xl py-2 hover:bg-amber-500/25 transition-colors font-medium"
+                        >
+                          <Star size={11} className="inline ml-1" />
+                          قيّم المقاول
+                        </button>
                       </div>
+
+                      {/* Rating modal */}
+                      <AnimatePresence>
+                        {ratingOpen && (
+                          <>
+                            <motion.div
+                              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              onClick={() => setRatingOpen(false)}
+                            />
+                            <motion.div
+                              className="fixed inset-0 z-51 flex items-center justify-center p-4 pointer-events-none"
+                              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                            >
+                              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl pointer-events-auto" dir="rtl">
+                                <div className="flex items-center justify-between mb-4">
+                                  <h3 className="text-navy font-bold text-base">تقييم المقاول</h3>
+                                  <button onClick={() => setRatingOpen(false)} className="text-charcoal/40 hover:text-navy transition-colors">
+                                    <XIcon size={18} />
+                                  </button>
+                                </div>
+                                <RatingWidget
+                                  type="contractor"
+                                  targetId={`proj-${project.id}`}
+                                  targetName={project.contractor}
+                                  onSubmit={() => { setRatingOpen(false); toast.success('شكراً على تقييمك!'); }}
+                                />
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </>

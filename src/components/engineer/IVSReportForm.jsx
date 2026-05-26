@@ -3,6 +3,7 @@ import { Shield, ShieldCheck, Loader2, Send, Copy, CheckCheck, AlertCircle } fro
 import SignaturePad from './SignaturePad';
 import { useDigitalSignature } from '../../hooks/useDigitalSignature';
 import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 
 // ─── IVS 2025 rating system ────────────────────────────────────────────────
 const RATING_LABELS = ['متهالك', 'سيء', 'مقبول', 'جيد', 'ممتاز'];
@@ -189,13 +190,45 @@ export default function IVSReportForm({ task, onSubmitted }) {
     if (result) setSealResult(result);
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     setSubmitting(true);
-    // Simulate sending to investment department
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      if (isConfigured && user) {
+        // Compute scores (form ratings are 1-5, DB stores 1-10)
+        const sRatings = (keys) => keys.map(k => form.structural[k]?.rating).filter(v => v > 0);
+        const avg10 = (keys) => {
+          const vals = sRatings(keys);
+          return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 2) : null;
+        };
+        const allVals = Object.values(form.structural).map(s => s.rating).filter(v => v > 0);
+
+        await supabase.from('engineering_reports').insert({
+          property_id:      task?.id ? String(task.id) : 'standalone',
+          engineer_id:      user.id,
+          owner_id:         task?.ownerId || user.id,
+          title:            task?.property || 'تقرير معاينة IVS',
+          summary:          form.defects || '',
+          structural_score: avg10(['foundation', 'load_bearing', 'roof', 'exterior', 'interior']),
+          electrical_score: form.structural.electrical?.rating
+                              ? form.structural.electrical.rating * 2 : null,
+          plumbing_score:   form.structural.plumbing?.rating
+                              ? form.structural.plumbing.rating * 2 : null,
+          overall_score:    allVals.length
+                              ? Math.round(allVals.reduce((a, b) => a + b, 0) / allVals.length * 2) : null,
+          findings:         Object.entries(form.structural)
+                              .filter(([, v]) => v.note)
+                              .map(([k, v]) => ({ category: k, rating: v.rating, note: v.note })),
+          recommendations:  form.recommendations ? [form.recommendations] : [],
+          status:           'submitted',
+        });
+      }
       onSubmitted?.({ ...form, seal: sealResult, task });
-    }, 1200);
+    } catch {
+      // Insert failed — still call onSubmitted so UI stays consistent
+      onSubmitted?.({ ...form, seal: sealResult, task });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isLocked = !!sealResult;

@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobalData } from '../context/GlobalContext';
+import SponsorCard from '../components/ui/SponsorCard';
 import {
   Truck, Gauge, MapPin, Lock, Unlock, CheckCircle,
   Shield, Receipt, BadgeCheck, Wifi, Timer,
@@ -36,6 +38,20 @@ const MS_CFG = {
   verified: { label: 'جاهز للإفراج', color: 'text-brand',      border: 'border-brand/25',  bg: 'bg-brand/8',   Icon: BadgeCheck },
   pending:  { label: 'قيد التنفيذ',color: 'text-amber-600',  border: 'border-amber-200', bg: 'bg-amber-50',  Icon: Lock },
 };
+
+// ── Skeleton card ─────────────────────────────────────────────────────────────
+function EquipmentSkeletonCard() {
+  return (
+    <div className="bg-white overflow-hidden animate-pulse" style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(31,42,56,0.06)' }}>
+      <div className="bg-navy/6" style={{ height: 168 }} />
+      <div className="p-4 space-y-2.5">
+        <div className="h-3 bg-navy/8 rounded-full w-3/4" />
+        <div className="h-2.5 bg-navy/5 rounded-full w-1/2" />
+        <div className="h-2 bg-navy/5 rounded-full w-2/3 mt-1" />
+      </div>
+    </div>
+  );
+}
 
 // ── TelematicsPanel ───────────────────────────────────────────────────────────
 function TelematicsPanel({ t }) {
@@ -820,6 +836,9 @@ const TABS = [
 ];
 
 export default function EquipmentPage() {
+  const { sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const activeSponsor = sponsorships.find(s => s.type === 'equipment' && s.active);
+
   const [tab,           setTab]           = useState('equipment');
   const [catFilter,     setCatFilter]     = useState('all');
   const [cityFilter,    setCityFilter]    = useState('الكل');
@@ -832,6 +851,12 @@ export default function EquipmentPage() {
   const [bookingEq,     setBookingEq]    = useState(null);
   const [checkoutEq,    setCheckoutEq]   = useState(null);
   const [contractorEq]                   = useState(() => getMarketEquipment());
+  const [mounting,      setMounting]     = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounting(false), 380);
+    return () => clearTimeout(t);
+  }, []);
   const [compareList,   setCompareList]  = useState([]);
   const [showCompare,   setShowCompare]  = useState(false);
 
@@ -988,18 +1013,21 @@ export default function EquipmentPage() {
                       <span className="text-navy font-bold">{filtered.length}</span> معدة {keyword ? `لـ "${keyword}"` : 'متاحة'}
                     </p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {filtered.map((eq, i) => (
-                        <EquipmentCard
-                          key={eq.id}
-                          eq={eq}
-                          index={i}
-                          onSelect={setSelectedEq}
-                          selected={selectedEq}
-                          onBook={setBookingEq}
-                          onCompare={handleCompare}
-                          inCompare={compareList.some(e => e.id === eq.id)}
-                        />
-                      ))}
+                      {mounting
+                        ? [...Array(6)].map((_, i) => <EquipmentSkeletonCard key={i} />)
+                        : filtered.map((eq, i) => (
+                            <EquipmentCard
+                              key={eq.id}
+                              eq={eq}
+                              index={i}
+                              onSelect={setSelectedEq}
+                              selected={selectedEq}
+                              onBook={setBookingEq}
+                              onCompare={handleCompare}
+                              inCompare={compareList.some(e => e.id === eq.id)}
+                            />
+                          ))
+                      }
                     </div>
                   </div>
                   <div className="hidden lg:block">
@@ -1099,6 +1127,13 @@ export default function EquipmentPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <div className="max-w-7xl mx-auto px-4 pb-4">
+        <SponsorCard
+          sponsor={activeSponsor}
+          onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+        />
+      </div>
 
       {/* Compare floating bar */}
       <AnimatePresence>

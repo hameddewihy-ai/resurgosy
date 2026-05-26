@@ -35,7 +35,7 @@ export default function WhatsAppButton() {
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-2" dir="rtl">
+    <div className="fixed bottom-[84px] lg:bottom-6 left-4 lg:left-6 z-50 flex flex-col items-start gap-2" dir="rtl">
 
       {/* Chat panel */}
       <AnimatePresence>

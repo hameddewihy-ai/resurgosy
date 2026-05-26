@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import SponsorCard from '../../components/ui/SponsorCard';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView, animate } from 'framer-motion';
 import {
@@ -7,6 +8,7 @@ import {
   Building2, Users, HardHat, PaintBucket, Droplets,
   FileText, Globe, ArrowLeft, Hammer, X,
   ChevronDown, Plus, Minus, Calculator, BadgeCheck, Zap,
+  DoorOpen, Cpu, Armchair, Package, Mountain,
 } from 'lucide-react';
 import PageHero from '../../components/PageHero';
 import SEO from '../../components/SEO';
@@ -55,54 +57,64 @@ const GALLERY_PROJECTS = [
 // ── Expandable services ────────────────────────────────────────────────────────
 const SERVICES_EXPANDED = [
   {
-    id: 'floors', icon: Layers, label: 'الأرضيات والجدران والأسقف', count: 14,
+    id: 'floors', icon: Layers, label: 'أرضيات وجدران وأسقف', count: 8,
     color: 'text-brand', accentBg: 'bg-brand/8', borderHover: 'hover:border-brand/40',
-    subs: ['سيراميك وبورسلان', 'باركيه خشبي', 'باركيه ألمنيوم', 'رخام وحجر طبيعي', 'فينيل وSPC', 'موزاييك', 'إيبوكسي', 'جبس بورد', 'اللياسة والملاط', 'أسقف معلقة', 'دراي وول', 'تشقير', 'طلاء بلاستيك', 'كاربيه'],
+    subs: ['تركيب سيراميك وبورسلين', 'تركيب رخام وجرانيت', 'تركيب باركيه وأرضيات خشبية', 'دهانات وأصباغ داخلية وخارجية', 'تركيب ورق جدران', 'أسقف مستعارة (جبس بورد)', 'أسقف فرنسية وديكورية', 'تكسيات جدارية (بديل خشب / بديل رخام)'],
   },
   {
-    id: 'mep', icon: Wrench, label: 'الكهرباء والسباكة والصحيات', count: 12,
-    color: 'text-navy', accentBg: 'bg-navy/8', borderHover: 'hover:border-navy/30',
-    subs: ['تمديد كهرباء', 'لوحات كهربائية', 'إضاءة LED ذكية', 'سباكة وصحيات', 'خطوط مياه وأنابيب', 'سخانات وغلايات', 'فلاتر مياه', 'مضخات ضغط', 'صرف صحي', 'اتصالات وشبكات', 'إنذار حريق', 'تهوية ومراوح'],
-  },
-  {
-    id: 'solar', icon: Sun, label: 'الطاقة الشمسية والبديلة', count: 6,
-    color: 'text-amber-500', accentBg: 'bg-amber-50', borderHover: 'hover:border-amber-300',
-    subs: ['ألواح شمسية منزلية', 'إنفرترات وعواكس', 'بطاريات تخزين', 'طاقة شمسية صناعية', 'مضخات مياه شمسية', 'نظام هجين Grid-Tie'],
-  },
-  {
-    id: 'restore', icon: Hammer, label: 'الترميم والتدعيم الإنشائي', count: 8,
-    color: 'text-red-500', accentBg: 'bg-red-50', borderHover: 'hover:border-red-300',
-    subs: ['تقييم هندسي ميداني', 'تدعيم أعمدة وجدران', 'حقن الشقوق الإنشائية', 'تقوية الأساسات', 'ترميم البلكونات', 'إصلاح السقف', 'معالجة الرطوبة والتسرب', 'ترميم الواجهات المتضررة'],
-  },
-  {
-    id: 'decor', icon: PaintBucket, label: 'الديكور والعمارة الداخلية', count: 9,
-    color: 'text-purple-600', accentBg: 'bg-purple-50', borderHover: 'hover:border-purple-300',
-    subs: ['تصميم داخلي 3D', 'ديكور عجمي دمشقي', 'جدران زخرفية', 'نقوش خشبية', 'زجاج معشق', 'ورق جدران', 'دهانات ديكورية', 'إضاءة تزيينية LED', 'ستائر وتنجيد'],
-  },
-  {
-    id: 'insul', icon: Droplets, label: 'العزل والتدفئة والتكييف', count: 5,
-    color: 'text-blue-500', accentBg: 'bg-blue-50', borderHover: 'hover:border-blue-300',
-    subs: ['عزل مائي للأسطح والحمامات', 'عزل حراري للجدران', 'تكييف مركزي', 'تدفئة بالإشعاع الأرضي', 'مجاري هواء HVAC'],
-  },
-  {
-    id: 'kitch', icon: Sofa, label: 'المطابخ والخزائن والأثاث', count: 7,
-    color: 'text-orange-500', accentBg: 'bg-orange-50', borderHover: 'hover:border-orange-300',
-    subs: ['مطابخ MDF وخشب', 'مطابخ ألمنيوم', 'خزائن ملابس تفصيل', 'غرف نوم كاملة', 'أثاث مكتبي', 'حمامات كاملة', 'تخزين تحت الدرج'],
-  },
-  {
-    id: 'secure', icon: Shield, label: 'الأمن والسلامة والأنظمة الذكية', count: 6,
-    color: 'text-green-600', accentBg: 'bg-green-50', borderHover: 'hover:border-green-300',
-    subs: ['كاميرات مراقبة HD', 'أنظمة إنذار', 'أقفال ذكية بصمة', 'منزل ذكي Smart Home', 'إنذار حريق', 'تحكم بالإضاءة والستائر'],
-  },
-  {
-    id: 'land', icon: TreePine, label: 'تنسيق الحدائق والفضاءات الخارجية', count: 4,
-    color: 'text-emerald-600', accentBg: 'bg-emerald-50', borderHover: 'hover:border-emerald-300',
-    subs: ['تصميم حدائق 3D', 'إضاءة خارجية', 'ممرات وأرضيات خارجية', 'نظام ري آلي'],
-  },
-  {
-    id: 'facade', icon: Building2, label: 'الواجهات وإكساء المباني الخارجي', count: 9,
+    id: 'doors', icon: DoorOpen, label: 'النوافذ والأبواب والأعمال المعدنية', count: 7,
     color: 'text-slate-600', accentBg: 'bg-slate-100', borderHover: 'hover:border-slate-400',
-    subs: ['حجر طبيعي ومصطنع', 'ألمنيوم كمبوزيت', 'طلاء واجهات', 'GRC وفيبركونكريت', 'واجهات زجاجية', 'برازولة وأفاريز', 'حماية من الرطوبة', 'ترميم واجهات', 'إضاءة معمارية'],
+    subs: ['توريد وتركيب أبواب خشبية', 'أبواب حديد وبوابات خارجية', 'نوافذ وأبواب ألومنيوم', 'نوافذ وأبواب UPVC', 'تركيب درابزين زجاج وحديد', 'أعمال شتر (ستائر معدنية خارجية)', 'أعمال الحدادة العامة (مظلات وسواتر)'],
+  },
+  {
+    id: 'stone', icon: Mountain, label: 'حجر وجي ار سي (GRC)', count: 4,
+    color: 'text-stone-600', accentBg: 'bg-stone-100', borderHover: 'hover:border-stone-400',
+    subs: ['توريد وتركيب حجر طبيعي', 'توريد وتركيب حجر صناعي', 'أعمال وتصميم واجهات GRC', 'أعمال الفيبر جلاس (GRP)'],
+  },
+  {
+    id: 'decor', icon: PaintBucket, label: 'ديكور وهندسة', count: 6,
+    color: 'text-purple-600', accentBg: 'bg-purple-50', borderHover: 'hover:border-purple-300',
+    subs: ['تصميم داخلي (3D)', 'تصميم واجهات خارجية', 'تصميم حدائق (لاند سكيب)', 'استشارات هندسية وتخطيط', 'إشراف هندسي على التنفيذ', 'استخراج رخص ومخططات هندسية'],
+  },
+  {
+    id: 'insul', icon: Droplets, label: 'عزل وأنظمة تسخين وتكييف', count: 7,
+    color: 'text-blue-500', accentBg: 'bg-blue-50', borderHover: 'hover:border-blue-300',
+    subs: ['عزل مائي وحراري للأسطح', 'عزل حمامات ومطابخ', 'تركيب وصيانة تكييف مركزي', 'تركيب وصيانة تكييف سبليت', 'تأسيس تكييف مخفي (Concealed)', 'أنظمة تسخين المياه المركزية', 'تمديدات دكت التكييف (Duct)'],
+  },
+  {
+    id: 'kitch', icon: Sofa, label: 'مطابخ وخزائن', count: 5,
+    color: 'text-orange-500', accentBg: 'bg-orange-50', borderHover: 'hover:border-orange-300',
+    subs: ['تفصيل مطابخ خشبية', 'تفصيل مطابخ ألومنيوم وخشمونيوم', 'تصميم وتفصيل خزائن حائط (دواليب)', 'تجهيز غرف ملابس (Dressing Rooms)', 'صيانة وتجديد المطابخ القديمة'],
+  },
+  {
+    id: 'secure', icon: Shield, label: 'أنظمة مراقبة وأمان', count: 5,
+    color: 'text-green-600', accentBg: 'bg-green-50', borderHover: 'hover:border-green-300',
+    subs: ['تركيب كاميرات مراقبة (CCTV)', 'أنظمة إنذار الحريق والسرقة', 'تركيب أقفال أبواب ذكية', 'أنظمة انتركم (صوتي ومرئي)', 'أنظمة التحكم بالدخول (Access Control)'],
+  },
+  {
+    id: 'land', icon: TreePine, label: 'لاند سكيب (Landscaping)', count: 7,
+    color: 'text-emerald-600', accentBg: 'bg-emerald-50', borderHover: 'hover:border-emerald-300',
+    subs: ['تنسيق وزراعة الحدائق', 'توريد وتركيب عشب صناعي', 'شبكات ري أوتوماتيكية', 'حفر وبناء حمامات سباحة', 'صيانة حمامات سباحة', 'تنفيذ شلالات ونوافير', 'تجهيز جلسات خارجية وبرجولات'],
+  },
+  {
+    id: 'smart', icon: Cpu, label: 'أنظمة تحكم ذكية (Smart Home)', count: 4,
+    color: 'text-indigo-600', accentBg: 'bg-indigo-50', borderHover: 'hover:border-indigo-300',
+    subs: ['تأسيس وتركيب أنظمة المنزل الذكي', 'التحكم الذكي بالإضاءة والتكييف', 'تركيب ستائر كهربائية وذكية', 'أنظمة صوتيات وسينما منزلية'],
+  },
+  {
+    id: 'mep', icon: Wrench, label: 'كهرباء وصحية وصيانة', count: 8,
+    color: 'text-navy', accentBg: 'bg-navy/8', borderHover: 'hover:border-navy/30',
+    subs: ['تأسيس وتمديدات كهربائية', 'تأسيس وتمديدات سباكة (صحي)', 'تركيب أطقم حمامات وخلاطات', 'تمديدات شبكات الغاز المركزي', 'صيانة كهربائية شاملة', 'صيانة سباكة وتمديدات شاملة', 'تركيب وصيانة مضخات المياه', 'تنظيف وتعقيم خزانات المياه'],
+  },
+  {
+    id: 'furnit', icon: Armchair, label: 'مفروشات', count: 5,
+    color: 'text-rose-500', accentBg: 'bg-rose-50', borderHover: 'hover:border-rose-300',
+    subs: ['تفصيل مجالس عربية وكنب', 'تفصيل وتوريد غرف نوم', 'توريد أثاث خارجي (للحدائق والمسابح)', 'تفصيل وتركيب ستائر داخلية', 'تنجيد وتجديد الأثاث والمجالس'],
+  },
+  {
+    id: 'other', icon: Package, label: 'خدمات مساندة', count: 5,
+    color: 'text-charcoal/60', accentBg: 'bg-cream', borderHover: 'hover:border-navy/25',
+    subs: ['تنظيف المباني الشامل بعد التشطيب', 'جلي وتلميع الرخام والبلاط', 'مكافحة حشرات ورش مبيدات', 'فك ونقل وتركيب العفش', 'خدمات الهدم وإزالة مخلفات البناء'],
   },
 ];
 
@@ -520,25 +532,11 @@ function CostCalculator() {
                   احصل على عروض حقيقية <ArrowLeft size={14} />
                 </Link>
 
-                {activeSponsor && (
-                  <div className="bg-gradient-to-br from-brand/5 to-navy/[0.03] border border-brand/20 rounded-xl p-4 mt-4 relative overflow-hidden text-right">
-                    <div className="absolute top-2 left-2 text-[8px] bg-brand/10 text-brand px-2 py-0.5 rounded font-black border border-brand/20">
-                      رعاية مميزة
-                    </div>
-                    <p className="text-[9px] text-charcoal/40 font-bold mb-1">موصى به للمشروع بواسطة: {activeSponsor.sponsor}</p>
-                    <h4 className="text-navy font-bold text-xs mb-1.5">{activeSponsor.title}</h4>
-                    <p className="text-charcoal/60 text-[10px] leading-relaxed mb-3">{activeSponsor.desc}</p>
-                    <a
-                      href={activeSponsor.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => incrementSponsorshipClicks && incrementSponsorshipClicks(activeSponsor.id)}
-                      className="inline-flex items-center justify-center gap-1.5 bg-brand hover:bg-navy text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:-translate-y-0.5 shadow-sm"
-                    >
-                      {activeSponsor.cta} ⚡
-                    </a>
-                  </div>
-                )}
+                <SponsorCard
+                  sponsor={activeSponsor}
+                  onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+                  className="mt-4"
+                />
 
                 <div className="mt-4 pt-4 border-t border-navy/10 flex flex-col gap-2">
                   <p className="text-[10px] text-charcoal/40 font-bold uppercase tracking-wider">خدمات ذات صلة بمشروعك:</p>

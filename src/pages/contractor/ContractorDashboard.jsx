@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 import {
   Tractor, Plus, Save, Trash2, Edit3, Settings,
   MapPin, Clock, Box, Wrench, ChevronDown, CheckCircle, FileText, Search, MessageCircle,
@@ -9,6 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { useGlobalData } from '../../context/GlobalContext';
 import { EQ_MARKET_KEY, getMarketEquipment } from '../../data/equipmentData';
+import { sendAdminAlert } from '../../utils/emailService';
 
 const EQUIPMENT_CATEGORIES = [
   { id: 'earthmoving', label: 'حفريات وأعمال ترابية' },
@@ -30,58 +32,7 @@ const PROVINCES = [
   'إدلب', 'دير الزور', 'الرقة', 'الحسكة', 'السويداء', 'درعا', 'القنيطرة',
 ];
 
-const MOCK_RFQS = [
-  {
-    id: 'RFQ-2605-001', status: 'new', receivedAt: '2026-05-21',
-    service: 'إكساء شامل', governorate: 'دمشق', city: 'المزة',
-    area: 220, propertyState: 'هيكل جاهز', materialTier: 'فاخر', urgency: 'عادي',
-    isExpat: true, clientCountry: 'المملكة العربية السعودية',
-    contactName: 'أ. محمد الزعبي', contactPhone: '+966 50 123 4567',
-    contactWhatsapp: '+966 50 123 4567',
-    budgetMin: 33000, budgetMax: 48400,
-    notes: 'إكساء كامل لشقة 220م² في المزة، مواد فاخرة، مع متابعة رقمية مستمرة.',
-  },
-  {
-    id: 'RFQ-2605-002', status: 'quoted', receivedAt: '2026-05-20',
-    service: 'ألواح شمسية', governorate: 'حلب', city: 'الحمدانية',
-    area: 150, propertyState: 'مسكون', materialTier: 'متوسط', urgency: 'عاجل',
-    isExpat: false, clientCountry: null,
-    contactName: 'م. سامر الحسن', contactPhone: '+963 944 567 890',
-    contactWhatsapp: '+963 944 567 890',
-    budgetMin: 22500, budgetMax: 33000,
-    notes: 'تركيب نظام طاقة شمسية لمنزل 150م² في حلب الحمدانية.',
-  },
-  {
-    id: 'RFQ-2605-003', status: 'new', receivedAt: '2026-05-21',
-    service: 'ترميم وإعادة تأهيل', governorate: 'حمص', city: 'الوعر',
-    area: 180, propertyState: 'متضرر جزئياً', materialTier: 'متوسط', urgency: 'مرن',
-    isExpat: false, clientCountry: null,
-    contactName: 'أ. هالة أحمد', contactPhone: '+963 933 111 222',
-    contactWhatsapp: null,
-    budgetMin: 27000, budgetMax: 39600,
-    notes: 'ترميم بناء متضرر في حمص - الوعر، العمل وفق جدول مرن.',
-  },
-  {
-    id: 'RFQ-2605-004', status: 'accepted', receivedAt: '2026-05-18',
-    service: 'ديكور داخلي', governorate: 'اللاذقية', city: 'صلنفة',
-    area: 90, propertyState: 'هيكل جاهز', materialTier: 'فاخر', urgency: 'عادي',
-    isExpat: true, clientCountry: 'ألمانيا',
-    contactName: 'أ. كريم سليمان', contactPhone: '+49 176 1234 5678',
-    contactWhatsapp: '+49 176 1234 5678',
-    budgetMin: 13500, budgetMax: 19800,
-    notes: 'تصميم وتنفيذ ديكور داخلي كامل بمواد فاخرة، التواصل عبر واتساب فقط.',
-  },
-  {
-    id: 'RFQ-2605-005', status: 'declined', receivedAt: '2026-05-17',
-    service: 'سباكة وكهرباء', governorate: 'دمشق', city: 'برزة',
-    area: 130, propertyState: 'قائم', materialTier: 'اقتصادي', urgency: 'عاجل',
-    isExpat: false, clientCountry: null,
-    contactName: 'م. رياض منصور', contactPhone: '+963 988 444 333',
-    contactWhatsapp: '+963 988 444 333',
-    budgetMin: 6500, budgetMax: 9100,
-    notes: 'تجديد شبكة السباكة والكهرباء لشقة في برزة.',
-  },
-];
+const MOCK_RFQS = [];
 
 const RFQ_STATUS_CFG = {
   new:      { label: 'جديد',         bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500'  },
@@ -123,19 +74,30 @@ export default function ContractorDashboard() {
     setExpandedRfq(null);
   };
   
-  // Mock State for Equipment List
-  const [equipments, setEquipments] = useState([
-    {
-      id: 1,
-      name: 'حفارة كاتربيلر 320D',
-      category: 'earthmoving',
-      location: 'دمشق',
-      type: 'wet', // wet = with driver/fuel, dry = without
-      price: 150000,
-      unit: 'shift',
-      status: 'active'
-    }
-  ]);
+  // Equipment List — loaded from Supabase if configured, else starts empty
+  const [equipments, setEquipments] = useState([]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('equipment')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data?.length) return;
+        setEquipments(data.map(eq => ({
+          id:       eq.id,
+          name:     eq.name,
+          category: eq.category,
+          location: eq.city,
+          type:     eq.hire_type || 'wet',
+          price:    Number(eq.rate || eq.wet_rate || 0),
+          unit:     eq.pricing_unit,
+          status:   eq.available ? 'active' : 'rented',
+        })));
+      });
+  }, [user]);
 
   // Form State
   const [form, setForm] = useState({
@@ -162,7 +124,7 @@ export default function ContractorDashboard() {
     setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== idx) }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.price || !form.location) {
       toast.error('يرجى تعبئة كافة الحقول المطلوبة');
@@ -170,35 +132,64 @@ export default function ContractorDashboard() {
     }
     const price = parseInt(form.price);
 
-    // Add to local dashboard list
+    if (isConfigured && user) {
+      const { data, error } = await supabase.from('equipment').insert({
+        owner_id:      user.id,
+        name:          form.name,
+        category:      form.category,
+        city:          form.location,
+        provider:      user.full_name || 'مقاول',
+        rate:          form.type === 'dry' ? price : 0,
+        wet_rate:      form.type === 'wet' ? price : 0,
+        pricing_unit:  form.unit,
+        fuel_included: form.hasFuel,
+        transport:     parseInt(form.transportCost) === 0 ? 'included' : 'separate',
+        transport_cost: parseInt(form.transportCost) || 0,
+        dry_available: form.type === 'dry',
+        wet_available: form.type === 'wet',
+        hire_type:     form.type,
+        available:     true,
+        attachments:   form.attachments.map((att, i) => ({ id: `att-${i}`, name: att, price: 0 })),
+      }).select().single();
+      if (!error && data) {
+        setEquipments(prev => [{
+          id: data.id, name: data.name, category: data.category,
+          location: data.city, type: data.hire_type, price, unit: data.pricing_unit, status: 'active',
+        }, ...prev]);
+        toast.success('تمت إضافة المعدة وستظهر في سوق المعدات!');
+        setActiveTab('list');
+        setForm({ ...form, name: '', price: '', attachments: [], photos: [] });
+
+        // إرسال إشعار للإدارة
+        sendAdminAlert(
+          'admin@resurgo.com',
+          'إضافة معدة جديدة',
+          { Contractor: user.full_name || 'مقاول', Equipment: form.name, Location: form.location }
+        ).catch(() => {});
+
+        return;
+      }
+    }
+
+    // Fallback: localStorage only
     const newEq = {
       id: Date.now(), name: form.name, category: form.category,
       location: form.location, type: form.type, price, unit: form.unit, status: 'active',
     };
-    setEquipments([newEq, ...equipments]);
-
-    // Publish to shared equipment market (EquipmentPage reads this)
+    setEquipments(prev => [newEq, ...prev]);
     const marketEq = {
-      id: `eq-c-${Date.now()}`,
-      ownerId: user?.id || 'contractor',
-      name: form.name, brand: '—', model: '—',
-      category: form.category,
-      city: form.location,
-      provider: user?.full_name || 'مقاول',
-      rate:     form.type === 'dry' ? price : 0,
-      wetRate:  form.type === 'wet' ? price : 0,
-      pricingUnit: form.unit,
-      fuelIncluded: form.hasFuel,
+      id: `eq-c-${Date.now()}`, ownerId: user?.id || 'contractor',
+      name: form.name, brand: '—', model: '—', category: form.category,
+      city: form.location, provider: user?.full_name || 'مقاول',
+      rate: form.type === 'dry' ? price : 0, wetRate: form.type === 'wet' ? price : 0,
+      pricingUnit: form.unit, fuelIncluded: form.hasFuel,
       transport: parseInt(form.transportCost) === 0 ? 'included' : 'separate',
       transportCost: parseInt(form.transportCost) || 0,
-      dryAvailable: form.type === 'dry',
-      wetAvailable: form.type === 'wet',
-      rating: 0, reviewCount: 0, totalRentals: 0,
-      available: true, nextAvailableDate: null,
+      dryAvailable: form.type === 'dry', wetAvailable: form.type === 'wet',
+      rating: 0, reviewCount: 0, totalRentals: 0, available: true, nextAvailableDate: null,
       attachments: form.attachments.map((att, i) => ({ id: `att-${i}`, name: att, price: 0 })),
       telematics: { engineHoursTotal: 0, engineHoursToday: 0, fuelLevel: 0, state: 'stopped', engineLoad: 0, lastPing: '-', gps: form.location },
-      inspectionHash: '—', condition: 3, waiverAvailable: false,
-      bookedDates: [],
+      inspectionHash: '—', condition: 3, waiverAvailable: false, bookedDates: [],
       maintenanceLog: { maxDailyHours: 8, history: [] },
       images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=70'],
       image:  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=70',
@@ -207,10 +198,16 @@ export default function ContractorDashboard() {
       const existing = getMarketEquipment();
       localStorage.setItem(EQ_MARKET_KEY, JSON.stringify([marketEq, ...existing]));
     } catch {}
-
     toast.success('تمت إضافة المعدة وستظهر في سوق المعدات!');
     setActiveTab('list');
     setForm({ ...form, name: '', price: '', attachments: [], photos: [] });
+
+    // إرسال إشعار للإدارة
+    sendAdminAlert(
+      'admin@resurgo.com',
+      'إضافة معدة جديدة (محلي)',
+      { Contractor: user?.full_name || 'مقاول', Equipment: form.name, Location: form.location }
+    ).catch(() => {});
   };
 
   return (
@@ -319,10 +316,14 @@ export default function ContractorDashboard() {
                     </div>
 
                     <div className="flex gap-2 mb-2">
-                      <button className="flex-1 py-2 rounded-xl bg-navy/5 text-navy font-bold text-xs hover:bg-navy/10 flex items-center justify-center gap-1.5">
+                      <button onClick={() => toast('ميزة التعديل ستتوفر قريباً')} className="flex-1 py-2 rounded-xl bg-navy/5 text-navy font-bold text-xs hover:bg-navy/10 flex items-center justify-center gap-1.5">
                         <Edit3 size={14} /> تعديل
                       </button>
-                      <button className="py-2 px-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center">
+                      <button onClick={async () => {
+                        if (isConfigured && user) await supabase.from('equipment').delete().eq('id', eq.id).eq('owner_id', user.id);
+                        setEquipments(prev => prev.filter(e => e.id !== eq.id));
+                        toast.success('تم حذف المعدة');
+                      }} className="py-2 px-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center">
                         <Trash2 size={16} />
                       </button>
                     </div>

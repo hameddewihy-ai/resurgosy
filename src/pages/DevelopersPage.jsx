@@ -7,6 +7,7 @@ import SEO from '../components/SEO';
 import toast from 'react-hot-toast';
 import DeveloperProfileModal from '../components/developer/DeveloperProfileModal';
 import ProjectDetailModal from '../components/developer/ProjectDetailModal';
+import SponsorCard from '../components/ui/SponsorCard';
 import { addNotification } from '../components/NotificationsPanel';
 import { CROWD_PROJECTS } from '../data/crowdfundData';
 import {
@@ -547,7 +548,8 @@ function RegisterDeveloperModal({ onClose }) {
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════════════════
 export default function DevelopersPage() {
-  const { developers, projects, jobs, tenders, marketData } = useGlobalData();
+  const { developers, projects, jobs, tenders, marketData, sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const activeSponsor = sponsorships.find(s => s.type === 'developers' && s.active);
   const projectsSectionRef = useRef(null);
 
   // Developer modal
@@ -708,6 +710,14 @@ export default function DevelopersPage() {
           ))}
         </div>
       </section>
+
+      {/* ── Sponsor ──────────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4">
+        <SponsorCard
+          sponsor={activeSponsor}
+          onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+        />
+      </div>
 
       {/* ── Projects Section ─────────────────────────────────────────────── */}
       <section ref={projectsSectionRef} className="max-w-7xl mx-auto px-4 py-10">

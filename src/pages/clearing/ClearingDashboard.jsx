@@ -27,19 +27,10 @@ const TOOL_TABS = [
   { id: 'validity', label: 'متتبع الوثائق',          icon: Clock      },
 ];
 
-// ── Archive table ─────────────────────────────────────────────────────────
-const MOCK_ARCHIVE = [
-  { ref: 'SY-CLR-2025-41120', type: 'حصر إرث',              date: '2025-05-07', clerk: 'نادية الكردي',  status: 'مؤرشَف' },
-  { ref: 'SY-CLR-2025-22891', type: 'وكالة خاصة ببيع عقار', date: '2025-05-09', clerk: 'سامر الأسد',   status: 'مؤرشَف' },
-  { ref: 'SY-CLR-2025-33401', type: 'استرداد ملكية',         date: '2025-05-08', clerk: 'مي الزهراوي',  status: 'مؤرشَف' },
-  { ref: 'SY-CLR-2025-62341', type: 'وكالة غير قابلة للعزل',date: '2025-05-10', clerk: 'نادية الكردي',  status: 'مؤرشَف' },
-  { ref: 'SY-CLR-2025-51902', type: 'بيع قطعي',              date: '2025-05-11', clerk: 'سامر الأسد',   status: 'مؤرشَف' },
-];
-
 function ArchiveTable({ newEntry }) {
   const rows = newEntry
-    ? [{ ref: newEntry.refNo, type: '—', date: new Date(newEntry.archiveDate).toLocaleDateString('ar-SY'), clerk: 'الجلسة الحالية', status: 'مؤرشَف' }, ...MOCK_ARCHIVE]
-    : MOCK_ARCHIVE;
+    ? [{ ref: newEntry.refNo, type: '—', date: new Date(newEntry.archiveDate).toLocaleDateString('ar-SY'), clerk: 'الجلسة الحالية', status: 'مؤرشَف' }]
+    : [];
 
   return (
     <div className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">

@@ -4,9 +4,7 @@ import { X, Link as LinkIcon, Send, FileText, CheckCircle, ShieldCheck } from 'l
 import toast from 'react-hot-toast';
 
 export default function StudyWorkspaceModal({ isOpen, onClose, projectName, onHandover }) {
-  const [links, setLinks] = useState([
-    { id: 1, title: 'المخطط المعماري المبدئي (AutoCAD)', url: 'https://drive.google.com/...', time: '10:30 AM' }
-  ]);
+  const [links, setLinks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
 

@@ -1,4 +1,23 @@
-// ── Central Mock Database for RESURGO ──────────────────────────────────────────
+﻿// ── Central Mock Database for RESURGO ──────────────────────────────────────────
+// Schema version: 1.0 — aligned with src/data/schema.js
+// Future: replace raw arrays with API calls to the same contract.
+
+// ── UUID + timestamp enrichment ───────────────────────────────────────────────
+// Derives a stable UUID-like string from an entity prefix + legacy id.
+// When a real DB is introduced, swap these for actual UUIDs from the backend.
+function makeUUID(prefix, id) {
+  const hex = String(id).replace(/\D/g, '').padStart(12, '0');
+  return `${prefix}-0000-4000-a000-${hex}`;
+}
+
+export function enrichRecords(prefix, records, timestampBase = '2025-01-01T00:00:00Z') {
+  return records.map((r, i) => ({
+    uuid: r.uuid ?? makeUUID(prefix, r.id ?? i + 1),
+    created_at: r.created_at ?? timestampBase,
+    updated_at: r.updated_at ?? timestampBase,
+    ...r,
+  }));
+}
 
 // ── Mock Data Aggregation ───────────────────────────────────────────────────
 
@@ -653,87 +672,13 @@ export const INITIAL_INVESTMENT_PROJECTS = [
 
 // ── Wallet Initial State ───────────────────────────────────────────────────────
 export const INITIAL_WALLET = {
-  totalBalance: 24500,
-  escrowBalance: 3450,
-  transactions: [
-    {
-      id: 'TRX-9823', type: 'escrow_hold',
-      title: 'حجز أموال - مشروع الساحل السوري',
-      category: 'real_estate', projectId: 'inv-3',
-      amount: -2000, status: 'pending',
-      date: '15 أيار 2026', timestamp: Date.now() - 86400000,
-    },
-    {
-      id: 'TRX-9822', type: 'release',
-      title: 'تحرير دفعة - تصميم إنشائي (المرحلة 1)',
-      category: 'engineering', projectId: null,
-      amount: -450, status: 'completed',
-      date: '12 أيار 2026', timestamp: Date.now() - 345600000,
-    },
-    {
-      id: 'TRX-9821', type: 'deposit',
-      title: 'إيداع بنكي - بنك سوريا الدولي الإسلامي',
-      category: 'funding', projectId: null,
-      amount: 5000, status: 'completed',
-      date: '10 أيار 2026', timestamp: Date.now() - 518400000,
-    },
-    {
-      id: 'TRX-9820', type: 'earning',
-      title: 'توزيع أرباح ربع سنوي - مشروع سياحي الساحل (Q1 2026)',
-      category: 'real_estate', projectId: 'inv-3',
-      amount: 3750, status: 'completed',
-      date: '01 نيسان 2026', timestamp: Date.now() - 3888000000,
-    },
-    {
-      id: 'TRX-9819', type: 'earning',
-      title: 'توزيع أرباح ربع سنوي - مجمع سكني دمشق الجديدة (Q1 2026)',
-      category: 'real_estate', projectId: 'inv-1',
-      amount: 2300, status: 'completed',
-      date: '01 نيسان 2026', timestamp: Date.now() - 3888000000,
-    },
-    {
-      id: 'TRX-9818', type: 'earning',
-      title: 'توزيع أرباح ربع سنوي - مشروع سياحي الساحل (Q4 2025)',
-      category: 'real_estate', projectId: 'inv-3',
-      amount: 3750, status: 'completed',
-      date: '01 كانون الثاني 2026', timestamp: Date.now() - 12960000000,
-    },
-    {
-      id: 'TRX-9817', type: 'earning',
-      title: 'توزيع أرباح ربع سنوي - مجمع سكني دمشق الجديدة (Q4 2025)',
-      category: 'real_estate', projectId: 'inv-1',
-      amount: 2300, status: 'completed',
-      date: '01 كانون الثاني 2026', timestamp: Date.now() - 12960000000,
-    },
-  ],
+  totalBalance: 0,
+  escrowBalance: 0,
+  transactions: [],
 };
 
-// ── Initial Investments (seeded demo portfolio) ───────────────────────────────
-// sharePrice = project.minInvest (1 share = minimum investment unit)
-export const INITIAL_INVESTMENTS = [
-  {
-    id: 'inv-rec-1',
-    projectId: 'inv-1', // مجمع سكني — دمشق الجديدة (IRR 18.4%)
-    amount: 50000,
-    shares: 2,          // 2 shares × $25,000 each
-    sharePrice: 25000,
-    date: '01 كانون الثاني 2026',
-    timestamp: 1735689600000, // Jan 1, 2026
-    status: 'active',
-    locked: false,
-  },
-  {
-    id: 'inv-rec-2',
-    projectId: 'inv-3', // مشروع سياحي — الساحل السوري (IRR 26.7%)
-    amount: 75000,
-    shares: 5,          // 5 shares × $15,000 each
-    sharePrice: 15000,
-    date: '15 تشرين الثاني 2025',
-    timestamp: 1731628800000, // Nov 15, 2025
-    status: 'active',
-    locked: true,       // still in first-year lock period
-  },
-];
+// ── Initial Investments ───────────────────────────────────────────────────────
+export const INITIAL_INVESTMENTS = [];
 
 // ── Gantt Tasks (Construction Schedule) ──────────────────────────────────────
 export const INITIAL_GANTT_TASKS = [
@@ -1057,136 +1002,13 @@ export const COMPANIES = [
 ];
 
 // ── Mock Finishing RFQs ──
-export const INITIAL_FINISHING_RFQS = [
-  {
-    id: 1, client: 'محمد الأحمد', city: 'دمشق — المزة', district: 'الفيلات الغربية', area: 180,
-    services: ['إكساء شامل للمغتربين'], budget: 'فاخر / ديلوكس',
-    date: 'منذ ساعتين', status: 'جديد', urgent: true, isExpat: true, country: 'ألمانيا',
-    description: 'شقة جديدة على العظم، أرغب في إكسائها بالكامل تسليم مفتاح بجودة عالية ورخام للصالون.', state: 'shell'
-  },
-  {
-    id: 2, client: 'سارة الخطيب', city: 'حلب — الحمدانية', district: 'الحي الثاني', area: 120,
-    services: ['الأرضيات والجدران والأسقف', 'الديكور والعمارة الداخلية'], budget: 'متوسط',
-    date: 'منذ 5 ساعات', status: 'جديد', urgent: false, isExpat: false, country: '',
-    description: 'شقة مستعملة تحتاج تجديد الأرضيات والدهان وتركيب أسقف جبس بورد في الصالون.', state: 'restore'
-  },
-  {
-    id: 3, client: 'خالد عمر', city: 'اللاذقية — الزراعة', district: 'شارع الجامعة', area: 95,
-    services: ['الديكور والعمارة الداخلية'], budget: 'فاخر / ديلوكس',
-    date: 'البارحة', status: 'قيد المراجعة', urgent: false, isExpat: true, country: 'السعودية',
-    description: 'ديكور داخلي للمكتب والعيادة الخاصة بي.', state: 'ready'
-  },
-  {
-    id: 4, client: 'ريم الحسن', city: 'حمص — الوعر', district: 'شارع الثورة', area: 200,
-    services: ['الترميم والتدعيم الإنشائي'], budget: 'اقتصادي',
-    date: 'منذ يومين', status: 'تم الرد', urgent: false, isExpat: false, country: '',
-    description: 'ترميم جدار متضرر وإعادة تمديد أنابيب المياه.', state: 'restore'
-  }
-];
+export const INITIAL_FINISHING_RFQS = [];
 
 // ── Mock Finishing Bids ──
-export const INITIAL_FINISHING_BIDS = [
-  {
-    id: 'bid-1',
-    rfqId: 4,
-    companyId: 1,
-    companyName: 'شركة دوزان للإكساء والديكور',
-    price: 18500,
-    durationWeeks: 10,
-    notes: 'العرض يشمل كافة المواد الأساسية والإشراف الهندسي الكامل مع ضمان 5 سنوات على أعمال السباكة والكهرباء.',
-    date: 'منذ يومين'
-  }
-];
+export const INITIAL_FINISHING_BIDS = [];
 
 // ── Mock Finishing Projects ──
-export const INITIAL_FINISHING_PROJECTS = [
-  {
-    id: 1,
-    name: 'تجديد شقة المزة',
-    address: 'دمشق - المزة - شارع الجامعة',
-    type: 'إكساء شامل',
-    contractor: 'شركة دوزان للإكساء والديكور',
-    contractorRating: 4.8,
-    contractorPhone: '+963 11 000 0001',
-    startDate: '2026-03-01',
-    estimatedEnd: '2026-07-01',
-    totalBudget: 28000,
-    currency: 'USD',
-    status: 'in_progress',
-    progress: 62,
-    area: 185,
-    milestones: [
-      { id: 1, name: 'أعمال الهيكل والسباكة', status: 'done', completedDate: '2026-03-20', progress: 100, notes: 'اكتملت جميع أعمال السباكة والكهرباء المخفية بنجاح' },
-      { id: 2, name: 'الجدران والبياض', status: 'done', completedDate: '2026-04-10', progress: 100, notes: 'بياض الجدران اكتمل في جميع الغرف وفق المواصفات' },
-      { id: 3, name: 'تركيب البلاط والأرضيات', status: 'in_progress', completedDate: null, progress: 75, notes: 'اكتمل المطبخ والحمامات، قيد التنفيذ في الصالون' },
-      { id: 4, name: 'الطلاء والدهانات', status: 'pending', completedDate: null, progress: 0, notes: '' },
-      { id: 5, name: 'تركيب الأبواب والنوافذ', status: 'pending', completedDate: null, progress: 0, notes: '' },
-      { id: 6, name: 'التشطيبات النهائية والتسليم', status: 'pending', completedDate: null, progress: 0, notes: '' },
-    ],
-    payments: [
-      { id: 1, label: 'دفعة البداية (20%)', amount: 5600, status: 'paid', date: '2026-03-01' },
-      { id: 2, label: 'دفعة منتصف الطريق (30%)', amount: 8400, status: 'paid', date: '2026-04-15' },
-      { id: 3, label: 'دفعة المرحلة الثالثة (30%)', amount: 8400, status: 'pending', date: '2026-06-01' },
-      { id: 4, label: 'دفعة التسليم (20%)', amount: 5600, status: 'pending', date: '2026-07-01' },
-    ],
-    media: [
-      { id: 1, type: 'photo', date: '2026-05-18', caption: 'تركيب بلاط الصالون - اليوم 3', emoji: '🏠' },
-      { id: 2, type: 'photo', date: '2026-05-15', caption: 'اكتمال تركيب بلاط الحمام الرئيسي', emoji: '🚿' },
-      { id: 3, type: 'photo', date: '2026-05-10', caption: 'المطبخ - بلاط الحائط والأرضية', emoji: '🍳' },
-      { id: 4, type: 'photo', date: '2026-05-05', caption: 'اكتمال البياض - غرفة النوم الرئيسية', emoji: '🛏️' },
-      { id: 5, type: 'photo', date: '2026-04-28', caption: 'أعمال السباكة المخفية في الحمامات', emoji: '🔧' },
-      { id: 6, type: 'video', date: '2026-04-20', caption: 'جولة فيديو - نهاية الأسبوع الأول من البياض', emoji: '🎥' },
-    ],
-    messages: [
-      { id: 1, from: 'contractor', name: 'م. رامي الحسن', date: '2026-05-19', time: '10:30', text: 'تم الانتهاء من 75% من بلاط الصالون، نتوقع الانتهاء خلال يومين. سنرسل صور التحديث اليوم مساءً.' },
-      { id: 2, from: 'user', name: 'أنت', date: '2026-05-19', time: '11:15', text: 'ممتاز! هل البلاط المختار يطابق العينة التي أرسلتها؟' },
-      { id: 3, from: 'contractor', name: 'م. رامي الحسن', date: '2026-05-19', time: '11:45', text: 'نعم بالضبط، نفس اللون والموديل. سنرسل صورة مقارنة مع العينة الآن.' },
-      { id: 4, from: 'contractor', name: 'م. رامي الحسن', date: '2026-05-15', time: '09:00', text: 'تم الانتهاء من الحمام الرئيسي بالكامل. النتيجة ممتازة!' },
-      { id: 5, from: 'user', name: 'أنت', date: '2026-05-14', time: '20:30', text: 'متى تتوقع البدء بأعمال الطلاء؟' },
-      { id: 6, from: 'contractor', name: 'م. رامي الحسن', date: '2026-05-14', time: '21:00', text: 'نبدأ الطلاء بعد الانتهاء من جميع أعمال البلاط، خلال أسبوعين تقريباً.' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'ترميم منزل حلب',
-    address: 'حلب - الجميلية - شارع النيل',
-    type: 'ترميم وإعادة تأهيل',
-    contractor: 'شركة أبو النور للتعهدات والإكساء',
-    contractorRating: 4.6,
-    contractorPhone: '+963 21 000 0002',
-    startDate: '2026-05-01',
-    estimatedEnd: '2026-10-01',
-    totalBudget: 45000,
-    currency: 'USD',
-    status: 'in_progress',
-    progress: 18,
-    area: 280,
-    milestones: [
-      { id: 1, name: 'المسح والتقييم الأولي', status: 'done', completedDate: '2026-05-05', progress: 100, notes: 'تم توثيق جميع الأضرار وتحديد نطاق العمل بدقة' },
-      { id: 2, name: 'أعمال التدعيم الإنشائي', status: 'in_progress', completedDate: null, progress: 40, notes: 'جارٍ تدعيم الأعمدة والجدران الحاملة' },
-      { id: 3, name: 'السباكة والكهرباء', status: 'pending', completedDate: null, progress: 0, notes: '' },
-      { id: 4, name: 'أعمال التشطيب الداخلي', status: 'pending', completedDate: null, progress: 0, notes: '' },
-      { id: 5, name: 'الواجهة والتشطيب الخارجي', status: 'pending', completedDate: null, progress: 0, notes: '' },
-      { id: 6, name: 'التسليم النهائي', status: 'pending', completedDate: null, progress: 0, notes: '' },
-    ],
-    payments: [
-      { id: 1, label: 'دفعة البداية (25%)', amount: 11250, status: 'paid', date: '2026-05-01' },
-      { id: 2, label: 'دفعة المرحلة الثانية (25%)', amount: 11250, status: 'pending', date: '2026-07-01' },
-      { id: 3, label: 'دفعة المرحلة الثالثة (25%)', amount: 11250, status: 'pending', date: '2026-09-01' },
-      { id: 4, label: 'دفعة التسليم (25%)', amount: 11250, status: 'pending', date: '2026-10-01' },
-    ],
-    media: [
-      { id: 1, type: 'photo', date: '2026-05-18', caption: 'أعمال تدعيم الأعمدة - الطابق الأول', emoji: '🏗️' },
-      { id: 2, type: 'photo', date: '2026-05-10', caption: 'تقرير المسح الأولي - الأضرار الموثقة', emoji: '📋' },
-      { id: 3, type: 'video', date: '2026-05-05', caption: 'جولة فيديو أولية للمنزل', emoji: '🎥' },
-    ],
-    messages: [
-      { id: 1, from: 'contractor', name: 'م. أحمد الكردي', date: '2026-05-18', time: '14:00', text: 'تقدم العمل في تدعيم الأعمدة جيد جداً، نتوقع الانتهاء من هذه المرحلة خلال أسبوعين.' },
-      { id: 2, from: 'user', name: 'أنت', date: '2026-05-17', time: '19:00', text: 'كيف تسير الأمور؟ هل كل شيء وفق الخطة?' },
-      { id: 3, from: 'contractor', name: 'م. أحمد الكردي', date: '2026-05-17', time: '19:30', text: 'نعم كل شيء على ما يرام. سنرسل تقرير الأسبوع الثلاثاء القادم مع صور تفصيلية.' },
-    ],
-  },
-];
+export const INITIAL_FINISHING_PROJECTS = [];
 
 export const INITIAL_SPONSORSHIPS = [
   {
@@ -1221,40 +1043,95 @@ export const INITIAL_SPONSORSHIPS = [
     link: 'https://wa.me/963900000003?text=مرحباً%20مجموعة%20الملاذ،%20أرغب%20بشرح%20طلب%20تقييم%20عقاري%20معتمد',
     active: true,
     clicks: 52
+  },
+  {
+    id: 'sp-4',
+    sponsor: 'شركة الوطن العقارية',
+    title: 'أكبر شبكة وسطاء عقاريين معتمدين في سوريا',
+    desc: 'نربطك بأفضل الوسطاء المعتمدين في محافظتك. بيع أو شراء عقارك بضمان قانوني كامل وبدون عمولة مخفية. أكثر من 2000 صفقة ناجحة.',
+    type: 'properties',
+    cta: 'تحدّث مع وسيط الآن',
+    link: 'https://wa.me/963900000004?text=مرحباً%20الوطن%20العقارية،%20أبحث%20عن%20وسيط%20معتمد',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-5',
+    sponsor: 'بنك الاستثمار السوري',
+    title: 'تمويل عقاري ميسّر بفائدة 0% للسنة الأولى',
+    desc: 'احصل على تمويل عقاري يصل إلى 70% من قيمة العقار بإجراءات مبسّطة وموافقة سريعة. خاص لعملاء منصة RESURGO المسجّلين.',
+    type: 'invest',
+    cta: 'اطّلع على شروط التمويل',
+    link: 'https://wa.me/963900000005?text=مرحباً%20بنك%20الاستثمار،%20أريد%20الاستفسار%20عن%20التمويل%20العقاري',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-6',
+    sponsor: 'شركة الفرات للمعدات الثقيلة',
+    title: 'تأجير معدات بناء بالساعة أو اليوم — تسليم خلال 4 ساعات',
+    desc: 'أسطول حديث من الرافعات والحفارات والخلاطات بأسعار تنافسية. يشمل السعر السائق والوقود والصيانة. نعمل في جميع محافظات سوريا.',
+    type: 'equipment',
+    cta: 'استفسر عن التوفر',
+    link: 'https://wa.me/963900000006?text=مرحباً%20الفرات%20للمعدات،%20أريد%20الاستفسار%20عن%20تأجير%20معدات',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-7',
+    sponsor: 'أكاديمية البناء السوري',
+    title: 'شهادات هندسية معتمدة دولياً — تعلّم عن بعد',
+    desc: 'برامج تدريبية معتمدة في الإنشاء والتصميم والإدارة الهندسية. أكثر من 40 دورة باللغة العربية مع شهادة معتمدة من نقابة المهندسين.',
+    type: 'jobs',
+    cta: 'اطّلع على البرامج',
+    link: 'https://wa.me/963900000007?text=مرحباً%20أكاديمية%20البناء،%20أريد%20الاطلاع%20على%20برامج%20الشهادات',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-8',
+    sponsor: 'مجلة العقار السوري',
+    title: 'اشترك في نشرة السوق الأسبوعية — مجاناً',
+    desc: 'تحليلات أسعار أسبوعية، فرص استثمارية حصرية، وتقارير المناطق الأعلى طلباً. يقرأها أكثر من 15,000 مستثمر ومطوّر.',
+    type: 'news',
+    cta: 'اشترك في النشرة',
+    link: 'https://wa.me/963900000008?text=مرحباً%20مجلة%20العقار،%20أريد%20الاشتراك%20في%20النشرة%20الأسبوعية',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-9',
+    sponsor: 'مكتب الأمان للخدمات القانونية',
+    title: 'توثيق عقود التمويل الجماعي والمشاركة بضمان قانوني',
+    desc: 'محامون متخصصون في عقود الاستثمار الجماعي وصناديق SPV. نحمي حقوقك القانونية من لحظة الاكتتاب حتى توزيع العوائد.',
+    type: 'crowdfund',
+    cta: 'استشارة قانونية مجانية',
+    link: 'https://wa.me/963900000009?text=مرحباً%20مكتب%20الأمان،%20أريد%20استشارة%20حول%20عقود%20الاستثمار%20الجماعي',
+    active: true,
+    clicks: 0
+  },
+  {
+    id: 'sp-10',
+    sponsor: 'شركة الإعمار للمواد الإنشائية',
+    title: 'مواد بناء بالجملة — توصيل مباشر لموقع المشروع',
+    desc: 'أسمنت، حديد، طوب، وعزل — بأسعار المصنع وبشهادات جودة معتمدة. عروض خاصة لشركات التطوير العقاري والمقاولين.',
+    type: 'developers',
+    cta: 'احصل على عرض سعر',
+    link: 'https://wa.me/963900000010?text=مرحباً%20الإعمار%20للمواد،%20أريد%20عرض%20سعر%20لمواد%20بناء',
+    active: true,
+    clicks: 0
   }
 ];
 
-export const INITIAL_USERS_SEED = [
-  { id: 'u-1', name: 'أحمد الحميد', email: 'ahmed@resurgo.com', role: 'seeker', status: 'نشط', date: '2026-05-10', phone: '+963 933 111 222' },
-  { id: 'u-2', name: 'باسل المحمد', email: 'basel@resurgo.com', role: 'owner', status: 'نشط', date: '2026-05-12', phone: '+963 944 333 444' },
-  { id: 'u-3', name: 'ياسر العلي', email: 'yasser@resurgo.com', role: 'investor', status: 'نشط', date: '2026-05-14', phone: '+963 955 555 666' },
-  { id: 'u-4', name: 'خالد المصري', email: 'khaled@resurgo.com', role: 'contractor', status: 'نشط', date: '2026-05-16', phone: '+963 966 777 888' },
-  { id: 'u-5', name: 'نادية الكردي', email: 'nadia@resurgo.com', role: 'internal_clerk', status: 'نشط', date: '2026-05-18', phone: '+963 988 999 000' },
-  { id: 'u-6', name: 'سامر الأسد', email: 'samer@resurgo.com', role: 'appraiser', status: 'نشط', date: '2026-05-20', phone: '+963 999 123 456' },
-  { id: 'u-7', name: 'منى الشام', email: 'mouna@resurgo.com', role: 'engineer', status: 'نشط', date: '2026-05-22', phone: '+963 931 777 222' },
-  { id: 'u-8', name: 'شركة ديار للتطوير', email: 'diar@resurgo.com', role: 'developer', status: 'معطل', date: '2026-05-23', phone: '+963 11 444 8888' },
-];
+export const INITIAL_USERS_SEED = [];
 
-export const INITIAL_MACHINERY_SEED = [
-  { id: 'eq-1', name: 'رافعة برجية Liebherr 280 EC-H', type: 'رافعة ثقيلة', provider: 'الفرات للمقاولات', rate: '$450 / يوم', status: 'نشط', location: 'دمشق' },
-  { id: 'eq-2', name: 'بلدوزر Caterpillar D9T', type: 'جرافة جنزير', provider: 'معدات الساحل', rate: '$350 / يوم', status: 'نشط', location: 'اللاذقية' },
-  { id: 'eq-3', name: 'حفار مجنزر Komatsu PC210', type: 'حفارة هيدروليكية', provider: 'المشرق للمعدات', rate: '$280 / يوم', status: 'معطل', location: 'حلب' },
-];
+export const INITIAL_MACHINERY_SEED = [];
 
-export const INITIAL_STUDIES_SEED = [
-  { id: 'st-1', title: 'دراسة سلامة إنشائية - برج تشرين السكني', client: 'مجموعة الشام العقارية', engineer: 'م. منى الشام', type: 'تدقيق إنشائي', status: 'مكتمل ومصدق', date: '2026-05-18' },
-  { id: 'st-2', title: 'دراسة ميكانيكية تربة - ضاحية الأسد الممتدة', client: 'شركة الفرات للتطوير', engineer: 'م. سامر الأسد', type: 'ميكانيك تربة', status: 'تحت الدراسة', date: '2026-05-21' },
-];
+export const INITIAL_STUDIES_SEED = [];
 
-export const INITIAL_CLEARING_SEED = [
-  { id: 'cl-1', transaction: 'نقل ملكية عقار 1012/مهاجرين', client: 'ياسر العلي', clerk: 'نادية الكردي', status: 'مكتمل وموثق', fees: '320,000 ل.س' },
-  { id: 'cl-2', transaction: 'ترخيص رهن عقاري تجاري - برج دمشق', client: 'شركة ديار للتطوير', clerk: 'معاملات دمشق المكتبية', status: 'قيد التدقيق القانوني', fees: '1,200,000 ل.س' },
-];
+export const INITIAL_CLEARING_SEED = [];
 
-export const INITIAL_VALUATIONS_SEED = [
-  { id: 'val-1', property: 'شقة سكنية - المزة فيلات غربية', client: 'باسل المحمد', appraiser: 'م. سامر الأسد', value: '450,000,000 ل.س', status: 'معتمد رسمياً' },
-  { id: 'val-2', property: 'مبنى تجاري - حلب الجميلية', client: 'شركة الفرات للتطوير', appraiser: 'مكتب تقييم الشهباء', value: '1,850,000,000 ل.س', status: 'انتظار الفحص الفني' },
-];
+export const INITIAL_VALUATIONS_SEED = [];
 
 
 

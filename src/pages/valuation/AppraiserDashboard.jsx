@@ -1,5 +1,5 @@
 // INTERNAL TOOL — role: appraiser | admin only — NOT public-facing
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileSearch, CheckCircle, MapPin, Clock, AlertCircle,
@@ -11,6 +11,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import SEO from '../../components/SEO';
 import { useGlobalData } from '../../context/GlobalContext';
+import { supabase, isConfigured } from '../../lib/supabase';
+import { addNotification } from '../../components/NotificationsPanel';
+import { sendEmail } from '../../utils/sendEmail';
+import { valuationAcceptedHtml, valuationRejectedHtml } from '../../utils/emailTemplates';
 
 // ── Local storage keys ────────────────────────────────────────────────────────
 const REQ_KEY    = 'resurgo-valuation-requests';
@@ -38,33 +42,9 @@ function computeBaseline(req) {
   return { low: Math.round(mid * 0.88), mid, high: Math.round(mid * 1.12), m2: Math.round(m2) };
 }
 
-// ── Mock seed requests (displayed if localStorage is empty) ───────────────────
-const MOCK_REQUESTS = [
-  {
-    id: 'VR-0001', status: 'pending', tier: 'field', submittedAt: '2026-05-20',
-    clientName: 'أحمد الخالد', clientPhone: '+963 912 345 678',
-    city: 'دمشق', district: 'المزة', propertyType: 'apartment', area: 140,
-    floor: 'high', age: 12, purpose: 'بيع', notes: 'شقة مفروشة بالكامل، إطلالة جيدة',
-  },
-  {
-    id: 'VR-0002', status: 'pending', tier: 'desktop', submittedAt: '2026-05-21',
-    clientName: 'لينا الشامي', clientPhone: '+963 933 567 890',
-    city: 'اللاذقية', district: 'الزراعة', propertyType: 'villa', area: 320,
-    floor: 'ground', age: 5, purpose: 'تمويل', notes: '',
-  },
-  {
-    id: 'VR-0003', status: 'in_review', tier: 'legal', submittedAt: '2026-05-19',
-    clientName: 'سامر إبراهيم', clientPhone: '+963 955 123 456',
-    city: 'حلب', district: 'العزيزية', propertyType: 'commercial', area: 85,
-    floor: 'ground', age: 20, purpose: 'محكمة', notes: 'نزاع إرث — يحتاج تقريراً مختوماً',
-  },
-];
-
 function getRequests() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(REQ_KEY) || '[]');
-    return stored.length ? stored : MOCK_REQUESTS;
-  } catch { return MOCK_REQUESTS; }
+  try { return JSON.parse(localStorage.getItem(REQ_KEY) || '[]'); }
+  catch { return []; }
 }
 function getReports() {
   try { return JSON.parse(localStorage.getItem(REPORT_KEY) || '[]'); } catch { return []; }
@@ -129,30 +109,50 @@ const ADJUSTMENTS = [
 ];
 
 // ── Request Queue row ─────────────────────────────────────────────────────────
-function RequestRow({ req, onSelect, selected }) {
+function RequestRow({ req, onSelect, selected, onStatusChange }) {
   const s = STATUS[req.status] || STATUS.pending;
   return (
-    <button onClick={() => onSelect(req)}
-      className={`w-full text-right flex items-center gap-4 px-5 py-4 border-b border-navy/6 hover:bg-cream/60 transition-colors ${selected ? 'bg-brand/5 border-r-2 border-r-brand' : ''}`}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-navy font-bold text-sm">{req.clientName}</span>
-          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
-          <span className="text-[9px] font-medium text-charcoal/40 bg-navy/5 px-1.5 py-0.5 rounded">{TIER_LABEL[req.tier]}</span>
+    <div className={`border-b border-navy/6 hover:bg-cream/40 transition-colors ${selected ? 'bg-brand/5 border-r-2 border-r-brand' : ''}`}>
+      <button onClick={() => onSelect(req)}
+        className="w-full text-right flex items-center gap-4 px-5 py-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-navy font-bold text-sm">{req.clientName}</span>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
+            <span className="text-[9px] font-medium text-charcoal/40 bg-navy/5 px-1.5 py-0.5 rounded">{TIER_LABEL[req.tier]}</span>
+          </div>
+          <p className="text-charcoal/55 text-xs flex items-center gap-1.5">
+            <MapPin size={10} /> {req.city} — {req.district}
+            <span className="mx-1 text-charcoal/20">·</span>
+            {req.area} م² · {req.propertyType === 'apartment' ? 'شقة' : req.propertyType === 'villa' ? 'فيلا' : req.propertyType === 'commercial' ? 'تجاري' : 'عقار'}
+          </p>
         </div>
-        <p className="text-charcoal/55 text-xs flex items-center gap-1.5">
-          <MapPin size={10} /> {req.city} — {req.district}
-          <span className="mx-1 text-charcoal/20">·</span>
-          {req.area} م² · {req.propertyType === 'apartment' ? 'شقة' : req.propertyType === 'villa' ? 'فيلا' : req.propertyType === 'commercial' ? 'تجاري' : 'عقار'}
-        </p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className="text-navy font-mono font-bold text-xs">{req.id}</p>
-        <p className="text-charcoal/40 text-[10px] flex items-center gap-1 justify-end mt-0.5">
-          <Clock size={9} /> {req.submittedAt}
-        </p>
-      </div>
-    </button>
+        <div className="text-right shrink-0">
+          <p className="text-navy font-mono font-bold text-xs">{req.id?.toString().slice(0, 8)}</p>
+          <p className="text-charcoal/40 text-[10px] flex items-center gap-1 justify-end mt-0.5">
+            <Clock size={9} /> {req.submittedAt}
+          </p>
+        </div>
+      </button>
+
+      {/* Quick action buttons for pending requests */}
+      {req.status === 'pending' && onStatusChange && (
+        <div className="flex gap-2 px-5 pb-3">
+          <button
+            onClick={() => onStatusChange(req, 'in_review')}
+            className="flex-1 text-xs bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20 rounded-lg py-1.5 font-semibold transition-colors"
+          >
+            قبول وبدء الدراسة
+          </button>
+          <button
+            onClick={() => onStatusChange(req, 'rejected')}
+            className="text-xs bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg px-3 py-1.5 font-semibold transition-colors"
+          >
+            رفض
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -398,19 +398,136 @@ function ReportRow({ report }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function AppraiserDashboard() {
-  const { user }             = useAuth();
-  const [tab, setTab]        = useState('queue');
-  const [requests]           = useState(getRequests);
-  const [reports, setReports] = useState(getReports);
+  const { user }                = useAuth();
+  const [tab, setTab]           = useState('queue');
+  const [requests, setRequests] = useState(getRequests);
+  const [reports, setReports]   = useState(getReports);
   const [selected, setSelected] = useState(null);
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase
+      .from('valuation_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setRequests(data.map(r => ({
+            id:           r.id,
+            clientName:   r.client_name,
+            city:         r.city,
+            district:     r.district,
+            area:         r.area,
+            propertyType: r.property_type,
+            floor:        r.floor || 'mid',
+            tier:         r.tier  || 'desktop',
+            status:       r.status,
+            submittedAt:  r.submitted_at || r.created_at?.slice(0, 10),
+          })));
+        }
+      });
+    supabase
+      .from('valuation_reports')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setReports(data.map(r => ({
+            id:            r.id,
+            requestId:     r.request_id,
+            clientName:    r.client_name,
+            city:          r.city,
+            district:      r.district,
+            area:          r.area,
+            propertyType:  r.property_type,
+            baselineValue: r.baseline_value,
+            adjustments:   r.adjustments || {},
+            finalValue:    r.final_value,
+            finalLow:      r.final_low,
+            finalHigh:     r.final_high,
+            currency:      r.currency || 'USD',
+            notes:         r.notes,
+            tier:          r.tier,
+            issuedAt:      r.issued_at,
+            status:        r.status,
+          })));
+        }
+      });
+  }, []);
 
   const pending   = requests.filter(r => r.status === 'pending');
   const inReview  = requests.filter(r => r.status === 'in_review');
+
+  const handleStatusChange = async (req, newStatus) => {
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: newStatus } : r));
+    if (isConfigured) {
+      supabase.from('valuation_requests').update({ status: newStatus }).eq('id', req.id).catch(() => {});
+      // Email client directly via their submitted email
+      if (req.client_email) {
+        if (newStatus === 'in_review') {
+          sendEmail({
+            to:      req.client_email,
+            subject: `📋 بدأ خبيرنا دراسة طلب التقييم الخاص بك`,
+            html:    valuationAcceptedHtml(req.client_name, req.tier),
+          });
+        } else if (newStatus === 'rejected') {
+          sendEmail({
+            to:      req.client_email,
+            subject: `📩 بخصوص طلب التقييم العقاري`,
+            html:    valuationRejectedHtml(req.client_name),
+          });
+        }
+      }
+      // In-app notification if they have a user_id
+      if (req.user_id) {
+        const msgs = {
+          in_review: 'بدأ خبير التقييم دراسة طلبك — سيصلك التقرير قريباً',
+          rejected:  'نأسف، تعذّر قبول طلب التقييم. يرجى التواصل معنا لمزيد من التفاصيل',
+        };
+        addNotification({
+          user_id: req.user_id,
+          type:    'system',
+          title:   newStatus === 'in_review' ? 'بدء دراسة طلب التقييم' : 'تحديث على طلب التقييم',
+          body:    msgs[newStatus] || 'تم تحديث حالة طلبك',
+          link:    '/dashboard',
+        });
+      }
+    }
+    toast.success(newStatus === 'in_review' ? 'تم قبول الطلب وبدء الدراسة' : 'تم رفض الطلب');
+    if (newStatus === 'in_review') { setSelected(req); setTab('session'); }
+  };
 
   const handleIssue = (report) => {
     setReports(prev => [report, ...prev]);
     setSelected(null);
     setTab('reports');
+    // Persist to Supabase
+    if (isConfigured) {
+      supabase.from('valuation_reports').insert({
+        id:             report.id,
+        request_id:     report.requestId,
+        client_name:    report.clientName,
+        city:           report.city,
+        district:       report.district,
+        area:           report.area,
+        property_type:  report.propertyType,
+        baseline_value: report.baselineValue,
+        adjustments:    report.adjustments,
+        final_value:    report.finalValue,
+        final_low:      report.finalLow,
+        final_high:     report.finalHigh,
+        currency:       report.currency,
+        notes:          report.notes,
+        tier:           report.tier,
+        issued_at:      report.issuedAt,
+        status:         'certified',
+      }).catch(() => {});
+      supabase.from('valuation_requests')
+        .update({ status: 'certified' })
+        .eq('id', report.requestId)
+        .catch(() => {});
+    }
   };
 
   const TABS = [
@@ -487,7 +604,7 @@ export default function AppraiserDashboard() {
                 </div>
               ) : (
                 [...pending, ...inReview].map(req => (
-                  <RequestRow key={req.id} req={req} onSelect={(r) => { setSelected(r); setTab('session'); }} selected={selected?.id === req.id} />
+                  <RequestRow key={req.id} req={req} onSelect={(r) => { setSelected(r); setTab('session'); }} selected={selected?.id === req.id} onStatusChange={handleStatusChange} />
                 ))
               )}
             </div>

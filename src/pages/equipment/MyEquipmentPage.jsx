@@ -10,16 +10,10 @@ import EquipmentFormModal from '../../components/EquipmentFormModal';
 import IoTTrackerMap from '../../components/equipment/IoTTrackerMap';
 import { EQUIPMENT_SEED } from '../../data/equipmentData';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 
-// ── Mock monthly revenue data for charts ─────────────────────────────────────
-const MOCK_MONTHLY = [
-  { month: 'يناير',  rev: 820  },
-  { month: 'فبراير', rev: 1340 },
-  { month: 'مارس',   rev: 980  },
-  { month: 'أبريل',  rev: 1750 },
-  { month: 'مايو',   rev: 2200 },
-  { month: 'يونيو',  rev: 1580 },
-];
+const MOCK_MONTHLY = [];
 
 const EQ_LIST_KEY  = 'resurgo-my-equipment';
 const REQUESTS_KEY = 'resurgo-equipment-requests';
@@ -29,63 +23,9 @@ const lsLoad = (key, fallback) => {
   catch { return fallback; }
 };
 
-const INITIAL_MY_EQUIPMENT = [
-  {
-    id: 1,
-    name: 'رافعة شوكية تويوتا 3 طن',
-    type: 'crane',
-    status: 'rented',
-    rate: 150,
-    wetAvailable: true,
-    wetRate: 180,
-    waiverAvailable: true,
-    totalEarnings: 3450,
-    pendingEarnings: 450,
-    image: 'https://images.unsplash.com/photo-1586864387789-228f0166ce49?w=400',
-  },
-  {
-    id: 2,
-    name: 'حفارة كاتربيلر 320',
-    type: 'excavator',
-    status: 'available',
-    rate: 400,
-    wetAvailable: false,
-    wetRate: null,
-    waiverAvailable: true,
-    totalEarnings: 12800,
-    pendingEarnings: 0,
-    image: 'https://images.unsplash.com/photo-1578330752538-2dfce4e0d9bd?w=400',
-  },
-];
+const INITIAL_MY_EQUIPMENT = [];
 
-const MOCK_REQUESTS = [
-  {
-    id: 'req-1',
-    equipmentId: 1,
-    equipmentName: 'رافعة شوكية تويوتا 3 طن',
-    renterName: 'مقاولات الأمانة',
-    renterPhone: '+963 933 500 100',
-    days: 5,
-    totalCost: 750,
-    rentalType: 'جاف (بدون مشغّل)',
-    dates: '20 مايو — 24 مايو 2026',
-    date: '2026-05-16',
-    status: 'pending',
-  },
-  {
-    id: 'req-2',
-    equipmentId: 2,
-    equipmentName: 'حفارة كاتربيلر 320',
-    renterName: 'شركة الإعمار السورية',
-    renterPhone: '+963 944 200 300',
-    days: 10,
-    totalCost: 3600,
-    rentalType: 'رطب (مع مشغّل)',
-    dates: '1 يونيو — 10 يونيو 2026',
-    date: '2026-05-15',
-    status: 'pending',
-  },
-];
+const MOCK_REQUESTS = [];
 
 const STATUS_CONFIG = {
   available:   { label: 'متاح للإيجار', short: 'متاح',  color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle },
@@ -100,18 +40,55 @@ const REQ_STATUS = {
 };
 
 export default function MyEquipmentPage() {
+  const { user } = useAuth();
   const [equipmentList, setEquipmentList] = useState(() => lsLoad(EQ_LIST_KEY, INITIAL_MY_EQUIPMENT));
   const [requests, setRequests]           = useState(() => lsLoad(REQUESTS_KEY, MOCK_REQUESTS));
   const [isModalOpen, setIsModalOpen]     = useState(false);
   const [editingEq, setEditingEq]         = useState(null);
   const [activeTab, setActiveTab]         = useState('list');
 
-  // Persist equipment list to localStorage
+  // Load from Supabase on mount
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('owner_equipment').select('*').eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data?.length) {
+          const normalized = data.map(r => ({
+            id: r.id, name: r.name, category: r.category,
+            rate: r.rate, pricingUnit: r.pricing_unit,
+            status: r.status, totalEarnings: r.total_earnings,
+            pendingEarnings: r.pending_earnings,
+            description: r.description, location: r.location,
+          }));
+          setEquipmentList(normalized);
+          localStorage.setItem(EQ_LIST_KEY, JSON.stringify(normalized));
+        }
+      });
+    supabase.from('equipment_bookings').select('*')
+      .order('created_at', { ascending: false }).limit(100)
+      .then(({ data }) => {
+        if (data?.length) {
+          const normalized = data.map(r => ({
+            id: r.id, equipmentId: r.equipment_id,
+            equipmentName: r.equipment_name,
+            renterName: r.renter_name, renterPhone: r.renter_phone,
+            days: r.days, totalCost: Number(r.total_cost),
+            rentalType: r.rental_type,
+            dates: r.selected_dates?.join(', ') || '',
+            date: r.created_at?.slice(0, 10),
+            status: r.status,
+          }));
+          setRequests(normalized);
+          localStorage.setItem(REQUESTS_KEY, JSON.stringify(normalized));
+        }
+      });
+  }, [user]);
+
+  // Persist to localStorage as cache
   useEffect(() => {
     localStorage.setItem(EQ_LIST_KEY, JSON.stringify(equipmentList));
   }, [equipmentList]);
-
-  // Persist requests to localStorage
   useEffect(() => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(requests));
   }, [requests]);
@@ -121,31 +98,52 @@ export default function MyEquipmentPage() {
   const activeCount   = equipmentList.filter(eq => eq.status === 'rented').length;
   const pendingReqs   = requests.filter(r => r.status === 'pending').length;
 
-  const handleSave = (savedEq) => {
+  const handleSave = async (savedEq) => {
     if (editingEq) {
       setEquipmentList(prev => prev.map(eq => eq.id === savedEq.id ? { ...eq, ...savedEq } : eq));
+      if (isConfigured && user) {
+        supabase.from('owner_equipment').update({
+          name: savedEq.name, category: savedEq.category,
+          rate: savedEq.rate, pricing_unit: savedEq.pricingUnit,
+          description: savedEq.description, location: savedEq.location,
+        }).eq('id', savedEq.id).catch(() => {});
+      }
     } else {
-      setEquipmentList(prev => [
-        { ...savedEq, id: Date.now(), status: 'available', totalEarnings: 0, pendingEarnings: 0 },
-        ...prev,
-      ]);
+      const newEq = { ...savedEq, status: 'available', totalEarnings: 0, pendingEarnings: 0 };
+      if (isConfigured && user) {
+        const { data } = await supabase.from('owner_equipment').insert({
+          owner_id: user.id, name: savedEq.name, category: savedEq.category,
+          rate: savedEq.rate, pricing_unit: savedEq.pricingUnit,
+          description: savedEq.description, location: savedEq.location,
+          status: 'available', total_earnings: 0, pending_earnings: 0,
+        }).select().single();
+        if (data) { setEquipmentList(prev => [{ ...newEq, id: data.id }, ...prev]); return; }
+      }
+      setEquipmentList(prev => [{ ...newEq, id: Date.now() }, ...prev]);
     }
   };
 
   const handleStatusChange = (id, newStatus) => {
     setEquipmentList(prev => prev.map(eq => eq.id === id ? { ...eq, status: newStatus } : eq));
+    if (isConfigured) {
+      supabase.from('owner_equipment').update({ status: newStatus }).eq('id', id).catch(() => {});
+    }
   };
 
   const handleRequest = (id, action) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action } : r));
+    if (isConfigured) {
+      supabase.from('equipment_bookings').update({ status: action === 'accepted' ? 'confirmed' : 'cancelled' }).eq('id', id).catch(() => {});
+    }
     if (action === 'accepted') {
       const req = requests.find(r => r.id === id);
       if (req) {
-        setEquipmentList(prev => prev.map(eq =>
-          eq.id === req.equipmentId
-            ? { ...eq, status: 'rented', pendingEarnings: (eq.pendingEarnings || 0) + req.totalCost }
-            : eq
-        ));
+        setEquipmentList(prev => prev.map(eq => {
+          if (eq.id !== req.equipmentId) return eq;
+          const updated = { ...eq, status: 'rented', pendingEarnings: (eq.pendingEarnings || 0) + req.totalCost };
+          if (isConfigured) supabase.from('owner_equipment').update({ status: 'rented', pending_earnings: updated.pendingEarnings }).eq('id', eq.id).catch(() => {});
+          return updated;
+        }));
       }
       toast.success('تم قبول طلب الإيجار — سيتم إنشاء عقد الضمان');
     } else {
@@ -165,7 +163,7 @@ export default function MyEquipmentPage() {
 
   // Analytics derived values
   const occupancyPct   = equipmentList.length ? Math.round((activeCount / equipmentList.length) * 100) : 0;
-  const maxMonthlyRev  = Math.max(...MOCK_MONTHLY.map(m => m.rev));
+  const maxMonthlyRev  = MOCK_MONTHLY.length ? Math.max(...MOCK_MONTHLY.map(m => m.rev)) : 0;
   const bestEq         = [...equipmentList].sort((a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0))[0];
   const worstEq        = [...equipmentList].sort((a, b) => (a.totalEarnings || 0) - (b.totalEarnings || 0))[0];
 

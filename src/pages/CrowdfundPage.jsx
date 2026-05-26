@@ -1,6 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobalData } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
+import SponsorCard from '../components/ui/SponsorCard';
 import {
   TrendingUp, Users, Shield, Clock, ChevronDown, X,
   DollarSign, Percent, CheckCircle, AlertTriangle, Globe,
@@ -86,30 +90,22 @@ const SECONDARY_LISTINGS = [
 ];
 
 const WATCHLIST_KEY = 'resurgo-crowdfund-watchlist';
-
-function getWatchlist() {
-  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]'); } catch { return []; }
-}
-function saveWatchlist(ids) {
-  try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(ids)); } catch {}
-}
+function lsGetWatch() { try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]'); } catch { return []; } }
+function lsSaveWatch(ids) { try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify(ids)); } catch {} }
 
 // ── Project card ───────────────────────────────────────────────────────────────
-function ProjectCard({ project, index }) {
+function ProjectCard({ project, index, isWatched, onToggleWatch }) {
   const pct      = fundingPct(project.raisedAmount, project.targetAmount);
   const days     = daysLeft(project.deadline);
   const status   = STATUS_CONFIG[project.status];
   const isActive = project.status === 'active';
   const TypeIcon = TYPE_ICONS[project.type] || Home;
 
-  const [saved, setSaved] = useState(() => getWatchlist().includes(project.id));
+  const saved = isWatched;
 
   const toggleSave = (e) => {
     e.preventDefault();
-    const list = getWatchlist();
-    const next = saved ? list.filter(id => id !== project.id) : [...list, project.id];
-    saveWatchlist(next);
-    setSaved(!saved);
+    onToggleWatch(project.id);
     toast.success(saved ? 'أُزيل من المتابعة' : 'أُضيف إلى قائمة المتابعة');
   };
 
@@ -275,6 +271,39 @@ function ProjectCard({ project, index }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CrowdfundPage() {
+  const { sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const { user } = useAuth();
+  const activeSponsor = sponsorships.find(s => s.type === 'crowdfund' && s.active);
+
+  const [watchIds, setWatchIds] = useState(() => new Set(lsGetWatch()));
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('crowdfund_watchlist').select('project_id').eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data?.length) {
+          const ids = data.map(r => r.project_id);
+          setWatchIds(new Set(ids));
+          lsSaveWatch(ids);
+        }
+      });
+  }, [user]);
+
+  const toggleWatch = (projectId) => {
+    const id = String(projectId);
+    setWatchIds(prev => {
+      const next = new Set(prev);
+      const was  = next.has(id);
+      was ? next.delete(id) : next.add(id);
+      lsSaveWatch([...next]);
+      if (isConfigured && user) {
+        if (was) supabase.from('crowdfund_watchlist').delete().eq('user_id', user.id).eq('project_id', id).catch(() => {});
+        else     supabase.from('crowdfund_watchlist').insert({ user_id: user.id, project_id: id }).catch(() => {});
+      }
+      return next;
+    });
+  };
+
   const [filterStatus,     setFilterStatus]     = useState('all');
   const [filterCity,       setFilterCity]       = useState('all');
   const [filterRisk,       setFilterRisk]       = useState('all');
@@ -626,7 +655,13 @@ export default function CrowdfundPage() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p, i) => <ProjectCard key={p.id} project={p} index={i} />)}
+            {filtered.map((p, i) => (
+  <ProjectCard
+    key={p.id} project={p} index={i}
+    isWatched={watchIds.has(String(p.id))}
+    onToggleWatch={toggleWatch}
+  />
+))}
           </div>
         )}
       </section>
@@ -988,6 +1023,11 @@ export default function CrowdfundPage() {
 
       {/* Valuation cross-link — required for crowdfund listing */}
       <div className="max-w-5xl mx-auto px-4 pb-10">
+        <SponsorCard
+          sponsor={activeSponsor}
+          onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+          className="mb-4"
+        />
         <Link to="/valuation"
           className="flex items-center gap-4 p-5 bg-white border border-brand/20 rounded-2xl hover:border-brand/50 hover:shadow-lg transition-all group">
           <div className="w-12 h-12 rounded-xl bg-brand/8 border border-brand/15 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">

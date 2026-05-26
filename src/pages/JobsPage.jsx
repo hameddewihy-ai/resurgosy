@@ -1,4 +1,6 @@
 import { useGlobalData } from '../context/GlobalContext';
+import { supabase, isConfigured } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -13,11 +15,13 @@ import {
 import EmptyState from '../components/ui/EmptyState';
 import SEO from '../components/SEO';
 import toast from 'react-hot-toast';
+import { sendAdminAlert } from '../utils/emailService';
 import { addNotification } from '../components/NotificationsPanel';
 import { CROWD_PROJECTS } from '../data/crowdfundData';
 import EngineerProfileModal from '../components/jobs/EngineerProfileModal';
 import AtsDashboardModal from '../components/jobs/AtsDashboardModal';
 import PostJobModal from '../components/jobs/PostJobModal';
+import SponsorCard from '../components/ui/SponsorCard';
 
 const APPS_KEY   = 'resurgo-job-apps';
 const SAVED_KEY  = 'resurgo-saved-jobs';
@@ -245,6 +249,7 @@ function JobRow({ job, index, onSelect, selected, isSaved, onToggleSave, isRecen
 // ── Job Detail Panel ──────────────────────────────────────────────────────────
 function JobDetail({ job, onClose, onApplied, jobs, onSelectSimilar }) {
   const { pushCrossHint } = useGlobalData();
+  const { user } = useAuth();
   const [applied, setApplied] = useState(false);
   const [copied, setCopied]   = useState(false);
 
@@ -372,18 +377,38 @@ function JobDetail({ job, onClose, onApplied, jobs, onSelectSimilar }) {
             className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20b858] text-white font-bold py-3 rounded-xl text-sm transition-colors">
             <MessageCircle size={16} /> تواصل واتساب مع الشركة
           </a>
-          <button onClick={() => {
+          <button onClick={async () => {
             setApplied(true);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            // Save to Supabase if logged in
+            if (isConfigured && user) {
+              supabase.from('job_applications').insert({
+                user_id: user.id,
+                job_id:  String(job.id),
+                title:   job.title,
+                company: job.company,
+                status:  'قيد المراجعة',
+              }).catch(() => {});
+            }
+            // Always keep localStorage as local cache
             try {
               const existing = JSON.parse(localStorage.getItem(APPS_KEY) || '[]');
               if (!existing.some(a => a.id === job.id)) {
                 localStorage.setItem(APPS_KEY, JSON.stringify([
-                  { id: job.id, title: job.title, company: job.company, status: 'تحت المراجعة', date: new Date().toISOString().slice(0, 10) },
+                  { id: job.id, title: job.title, company: job.company, status: 'قيد المراجعة', date: dateStr },
                   ...existing,
                 ]));
               }
             } catch {}
             toast.success('تم إرسال طلبك بنجاح!');
+            
+            // إرسال إيميل للإدارة
+            sendAdminAlert('admin@resurgo.com', 'تقديم على وظيفة جديدة', {
+              JobTitle: job.title,
+              Company: job.company,
+              City: job.city
+            }).catch(() => {});
+
             pushCrossHint({
               emoji: '🏗️',
               text: 'هل تبحث عن آليات أو معدات ثقيلة للعمل في مواقع المشاريع؟',
@@ -570,7 +595,9 @@ function ApplicationsTab({ onCountChange }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function JobsPage() {
-  const { jobs, engineers } = useGlobalData();
+  const { jobs, engineers, sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const { user } = useAuth();
+  const activeSponsor = sponsorships.find(s => s.type === 'jobs' && s.active);
 
   const [tab, setTab] = useState('jobs');
 
@@ -594,6 +621,22 @@ export default function JobsPage() {
 
   const [savedJobs, setSavedJobs]   = useState(loadSaved);
   const [recentJobs, setRecentJobs] = useState(loadRecent);
+
+  // Hydrate saved jobs from Supabase on login
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('saved_jobs')
+      .select('job_id')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data?.length) {
+          const ids = data.map(r => r.job_id);
+          setSavedJobs(new Set(ids));
+          localStorage.setItem(SAVED_KEY, JSON.stringify(ids));
+        }
+      });
+  }, [user]);
   const [appsCount, setAppsCount]   = useState(() => loadApplications().length);
 
   const [alertRevision, setAlertRevision]   = useState(0);
@@ -669,6 +712,11 @@ export default function JobsPage() {
     if (existing) {
       localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts.filter(a => a.key !== alertKey)));
       toast('تم إلغاء التنبيه', { icon: '🔕' });
+      if (isConfigured && user) {
+        supabase.from('user_preferences')
+          .delete().eq('user_id', user.id).eq('type', 'job_alert').eq('name', alertKey)
+          .catch(() => {});
+      }
     } else {
       const label = [
         spec !== 'الكل'    ? spec    : '',
@@ -679,19 +727,33 @@ export default function JobsPage() {
       localStorage.setItem(ALERTS_KEY, JSON.stringify([...alerts, { key: alertKey, label, spec, city, jobType, salaryMin }]));
       toast.success(`✓ تنبيه مفعّل: ${label}`);
       setAlertDismissed(false);
+      if (isConfigured && user) {
+        supabase.from('user_preferences').insert({
+          user_id: user.id,
+          type:    'job_alert',
+          name:    alertKey,
+          payload: { spec, city, jobType, salaryMin, label },
+          active:  true,
+        }).catch(() => {});
+      }
     }
     setAlertRevision(r => r + 1);
-  }, [alertKey, spec, city, jobType, salaryMin]);
+  }, [alertKey, spec, city, jobType, salaryMin, user]);
 
   const toggleSave = useCallback((id) => {
     setSavedJobs(prev => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); toast('تم إلغاء الحفظ', { icon: '🔖' }); }
-      else              { next.add(id);    toast.success('تم حفظ الوظيفة'); }
+      const was  = next.has(id);
+      if (was) { next.delete(id); toast('تم إلغاء الحفظ', { icon: '🔖' }); }
+      else     { next.add(id);   toast.success('تم حفظ الوظيفة'); }
       localStorage.setItem(SAVED_KEY, JSON.stringify([...next]));
+      if (isConfigured && user) {
+        if (was) supabase.from('saved_jobs').delete().eq('user_id', user.id).eq('job_id', String(id)).catch(() => {});
+        else     supabase.from('saved_jobs').insert({ user_id: user.id, job_id: String(id) }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [user]);
 
   const clearFilters = () => {
     setSpec('الكل'); setCity('الكل'); setSearch('');
@@ -840,7 +902,7 @@ export default function JobsPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-0.5">
               {[
                 ['jobs',         'الوظائف',    filteredJobs.length],
                 ['engineers',    'المهندسون',  filteredEngineers.length],
@@ -848,7 +910,7 @@ export default function JobsPage() {
                 ['applications', 'طلباتي',     appsCount],
               ].map(([id, label, count]) => (
                 <button key={id} onClick={() => setTab(id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${tab === id ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/15 text-white/70 hover:border-white/40 hover:text-white'}`}>
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${tab === id ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/15 text-white/70 hover:border-white/40 hover:text-white'}`}>
                   {id === 'saved'        && <Bookmark size={13} />}
                   {id === 'applications' && <ClipboardList size={13} />}
                   {label}
@@ -858,7 +920,7 @@ export default function JobsPage() {
                 </button>
               ))}
               <button onClick={() => setIsAtsOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/30 text-sm font-bold bg-white/10 hover:bg-white text-white hover:text-navy transition-all">
+                className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border border-white/30 text-sm font-bold bg-white/10 hover:bg-white text-white hover:text-navy transition-all">
                 مساحة الشركات (ATS)
               </button>
             </div>
@@ -1062,13 +1124,17 @@ export default function JobsPage() {
                         : <JobCard key={job.id} {...jobItemProps(job, i)} />
                     )}
                   </div>
-                  <div className="hidden lg:block">
+                  <div className="hidden lg:block space-y-4">
                     <JobDetail
                       job={selectedJob}
                       onClose={() => setSelectedJob(null)}
                       onApplied={() => setAppsCount(loadApplications().length)}
                       jobs={jobs}
                       onSelectSimilar={handleSelectJob}
+                    />
+                    <SponsorCard
+                      sponsor={activeSponsor}
+                      onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
                     />
                   </div>
                 </div>

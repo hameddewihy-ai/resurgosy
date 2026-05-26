@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar as CalendarIcon, Wrench, AlertTriangle, CheckCircle, Clock, Info, ChevronLeft, ChevronRight, Activity, MapPin, Fuel, Battery, Zap, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -71,6 +73,7 @@ function StatPill({ icon: Icon, label, value, accent = false }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function EquipmentBookingModal({ isOpen, onClose, equipment }) {
   const { pushCrossHint } = useGlobalData();
+  const { user } = useAuth();
   const [selectedDates, setSelectedDates] = useState([]);
   const [tab, setTab] = useState('calendar');
   const [month, setMonth] = useState(4); // 0-indexed → May = 4
@@ -97,26 +100,45 @@ export default function EquipmentBookingModal({ isOpen, onClose, equipment }) {
   const totalCost  = calcTotal(selectedDates.length, dailyRate);
   const isDiscount = selectedDates.length >= 7;
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (selectedDates.length === 0) { toast.error('الرجاء تحديد أيام الحجز أولاً'); return; }
+
+    const record = {
+      equipment_id:   String(equipment?.id),
+      equipment_name: equipment?.name,
+      user_id:        user?.id ?? null,
+      renter_name:    user?.full_name || 'زائر',
+      renter_phone:   user?.phone    || '',
+      selected_dates: selectedDates,
+      days:           selectedDates.length,
+      total_cost:     totalCost,
+      rental_type:    'جاف (بدون مشغّل)',
+      month_index:    month,
+      year,
+      status:         'pending',
+    };
+
+    if (isConfigured) {
+      supabase.from('equipment_bookings').insert(record).catch(() => {});
+    }
+
+    // localStorage cache
     try {
       const key  = 'resurgo-equipment-requests';
       const prev = JSON.parse(localStorage.getItem(key) || '[]');
       prev.unshift({
-        id:            `req-${Date.now()}`,
-        equipmentId:   equipment?.id,
-        equipmentName: equipment?.name,
-        renterName:    'مستأجر جديد',
-        renterPhone:   '',
-        days:          selectedDates.length,
-        totalCost,
-        rentalType:    'جاف (بدون مشغّل)',
-        dates:         `${selectedDates[0]} — ${selectedDates[selectedDates.length - 1]} مايو 2026`,
-        date:          new Date().toISOString().slice(0, 10),
-        status:        'pending',
+        id: `req-${Date.now()}`,
+        equipmentId: equipment?.id, equipmentName: equipment?.name,
+        renterName: record.renter_name, renterPhone: record.renter_phone,
+        days: selectedDates.length, totalCost,
+        rentalType: 'جاف (بدون مشغّل)',
+        dates: `${selectedDates[0]} — ${selectedDates[selectedDates.length - 1]} ${MONTH_NAMES[month]} ${year}`,
+        date: new Date().toISOString().slice(0, 10),
+        status: 'pending',
       });
       localStorage.setItem(key, JSON.stringify(prev.slice(0, 100)));
     } catch { /* silent */ }
+
     toast.success(`✅ تم إرسال طلب الحجز لـ ${selectedDates.length} يوم — قيمة العقد: ${totalCost.toLocaleString()}$`);
     pushCrossHint({
       emoji: '👷',

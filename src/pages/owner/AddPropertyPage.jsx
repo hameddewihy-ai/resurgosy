@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Building2, MapPin, DollarSign, CheckCircle, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, ArrowLeft, Building2, MapPin, DollarSign, CheckCircle, Home, HardHat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase, isConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { sendAdminAlert } from '../../utils/emailService';
 import StepIndicator from '../../components/owner/StepIndicator';
 import DocUploader from '../../components/owner/DocUploader';
 import SmartImageGallery from '../../components/owner/SmartImageGallery';
 import EngineerMatcher from '../../components/owner/EngineerMatcher';
 
-const STEPS = ['معلومات العقار', 'وثائق التمليك', 'معرض الصور', 'طلب مهندس'];
+const STEPS = ['معلومات العقار', 'وثائق التمليك (اختياري)', 'معرض الصور (اختياري)', 'مراجعة وإرسال'];
 
 const PROPERTY_TYPES = [
   { value: 'residential', label: 'سكني',    icon: '🏠' },
@@ -291,6 +292,7 @@ function StepReview({ form, docs, images, engineer }) {
 // ────────────────────────────────────────────────────────────────
 export default function AddPropertyPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [step,      setStep]      = useState(0);
   const [form,      setForm]      = useState(INITIAL_FORM);
   const [docs,      setDocs]      = useState([]);
@@ -325,7 +327,11 @@ export default function AddPropertyPage() {
       const listingStatus = listingStatusMap[form.listing_type] || 'للبيع';
 
       if (isConfigured && user) {
-        const { error } = await supabase.from('properties').insert([{
+        const imageUrls = images
+          .filter(i => !i.duplicate && i.url)
+          .map(i => i.url);
+
+        const payload = {
           owner_id:        user.id,
           title:           form.title,
           description:     form.description,
@@ -343,11 +349,21 @@ export default function AddPropertyPage() {
           lat:             form.lat         ? parseFloat(form.lat)         : null,
           lng:             form.lng         ? parseFloat(form.lng)         : null,
           amenities:       form.amenities,
-          status:          'listed',
-        }]);
+          images:          imageUrls,
+          status:          'pending_review',
+        };
+        const { error } = await supabase
+          .from('properties').insert([payload]);
         if (error) throw error;
-      }
-      // Always save to localStorage so Dashboard "عقاراتي" tab can show it
+
+        // Notify admin
+        sendAdminAlert('admin@resurgo.com', 'عقار جديد للمراجعة', {
+          Title:    form.title,
+          Province: form.province,
+          Owner:    user.email,
+        }).catch(() => {});
+      } else {
+      // Save to localStorage only when Supabase is not configured
       try {
         const LIST_KEY = 'resurgo-my-listings';
         const existing = JSON.parse(localStorage.getItem(LIST_KEY) || '[]');
@@ -369,6 +385,7 @@ export default function AddPropertyPage() {
         };
         localStorage.setItem(LIST_KEY, JSON.stringify([listing, ...existing]));
       } catch {}
+      }
       setSubmitted(true);
     } catch (err) {
       toast.error('حدث خطأ أثناء الإرسال: ' + (err.message ?? 'يرجى المحاولة مجدداً'));
@@ -397,10 +414,12 @@ export default function AddPropertyPage() {
               <Building2 size={17} />
               إضافة عقار آخر
             </button>
-            <Link to="/dashboard" className="btn-cta flex items-center justify-center gap-2">
+            <button
+              onClick={() => navigate('/dashboard', { state: { propertyAdded: true } })}
+              className="btn-cta flex items-center justify-center gap-2">
               <Home size={17} />
               عرض عقاراتي في لوحة التحكم
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -433,10 +452,18 @@ export default function AddPropertyPage() {
           {step === 2 && <SmartImageGallery images={images} onChange={setImages} />}
           {step === 3 && (
             <div className="space-y-6">
-              <EngineerMatcher propertyCoords={propertyCoords} onEngineerSelected={setEngineer} />
-              <div className="border-t border-navy/15 pt-6">
-                <StepReview form={form} docs={docs} images={images} engineer={engineer} />
-              </div>
+              <StepReview form={form} docs={docs} images={images} engineer={engineer} />
+              <details className="border border-navy/10 rounded-xl overflow-hidden">
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-sm font-semibold text-charcoal/70 hover:bg-cream transition-colors select-none">
+                  <HardHat size={15} className="text-brand shrink-0" />
+                  طلب مهندس للتحقق (اختياري)
+                  <span className="mr-auto text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-bold">يمنح شارة ✓ موثّق</span>
+                </summary>
+                <div className="border-t border-navy/10 p-4">
+                  <p className="text-charcoal/50 text-xs mb-4">يمكنك إرسال العقار الآن وطلب التحقق لاحقاً من لوحة التحكم.</p>
+                  <EngineerMatcher propertyCoords={propertyCoords} onEngineerSelected={setEngineer} />
+                </div>
+              </details>
             </div>
           )}
         </div>
@@ -458,12 +485,14 @@ export default function AddPropertyPage() {
               <ArrowLeft size={18} />
             </button>
           ) : (
-            <button onClick={handleSubmit} disabled={saving}
+            <button
+              onClick={handleSubmit}
+              disabled={saving || images.some(i => i.processing)}
               className="btn-cta flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
-              {saving
+              {(saving || images.some(i => i.processing))
                 ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <CheckCircle size={18} />}
-              {saving ? 'جارٍ الإرسال...' : 'إرسال العقار'}
+              {saving ? 'جارٍ الإرسال...' : images.some(i => i.processing) ? 'جارٍ رفع الصور...' : 'إرسال العقار'}
             </button>
           )}
         </div>

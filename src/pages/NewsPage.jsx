@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobalData } from '../context/GlobalContext';
+import SponsorCard from '../components/ui/SponsorCard';
 import {
   Scale, DollarSign, Map, Globe, TrendingUp,
   Clock, ChevronLeft, Search, X, Bell, AlertTriangle, Info,
@@ -129,6 +131,8 @@ function StatPill({ icon: Icon, label, value }) {
 
 export default function NewsPage() {
   const { articles } = useNews();
+  const { sponsorships = [], incrementSponsorshipClicks } = useGlobalData();
+  const activeSponsor = sponsorships.find(s => s.type === 'news' && s.active);
   const published = articles.filter(a => a.status === 'published');
 
   const [cat,      setCat]      = useState('all');
@@ -208,12 +212,12 @@ export default function NewsPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Category */}
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-x-visible sm:pb-0">
             {ALL_CATS.map(({ id, label }) => {
               const Icon = CAT_ICONS[id] ?? Bell;
               return (
                 <button key={id} onClick={() => setCat(id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium active:scale-[0.96] transition-all
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium active:scale-[0.96] transition-all
                     ${cat === id ? 'bg-navy border-navy text-white shadow-sm' : 'border-navy/15 text-charcoal/60 bg-white hover:border-navy/30 hover:text-navy'}`}>
                   {id !== 'all' && <Icon size={11} />}
                   {label}
@@ -223,10 +227,10 @@ export default function NewsPage() {
           </div>
 
           {/* Urgency */}
-          <div className="flex gap-1.5 mr-auto">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:overflow-x-visible sm:pb-0 sm:mr-auto">
             {[['all','الكل'], ['urgent','عاجل'], ['high','مهم'], ['info','معلومة']].map(([id, label]) => (
               <button key={id} onClick={() => setUrgency(id)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-medium active:scale-[0.96] transition-all
+                className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-medium active:scale-[0.96] transition-all
                   ${urgency === id
                     ? id === 'urgent' ? 'bg-red-500 border-red-500 text-white shadow-sm shadow-red-200'
                     : id === 'high'   ? 'bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-200'
@@ -273,6 +277,11 @@ export default function NewsPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <SponsorCard
+          sponsor={activeSponsor}
+          onClick={() => incrementSponsorshipClicks?.(activeSponsor.id)}
+        />
 
         {/* Cross-link to clearing */}
         <div className="border border-brand/20 bg-brand/5 rounded-2xl p-5 flex items-center justify-between gap-4">

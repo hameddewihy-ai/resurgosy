@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, CheckCircle,
   AlertCircle, LogOut, Save, Edit2, Shield, Globe,
-  Building2, MapPin, Briefcase, ChevronLeft, ArrowLeft,
+  Building2, MapPin, Briefcase, ChevronLeft, ArrowLeft, Camera, Loader2,
 } from 'lucide-react';
 import { useAuth, ROLES } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
 import SEO from '../components/SEO';
+import toast from 'react-hot-toast';
 
 const SYRIAN_PROVINCES = [
   'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس',
@@ -197,15 +199,66 @@ export default function ProfilePage() {
   });
 
   const [pwForm, setPwForm] = useState({ password: '', confirm: '' });
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef(null);
 
   const onChange    = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   const onPwChange  = (e) => setPwForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('حجم الصورة يجب أن يكون أقل من 2 ميغابايت'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('يرجى اختيار ملف صورة'); return; }
+    setUploading(true);
+    try {
+      if (isConfigured) {
+        const ext  = file.name.split('.').pop();
+        const path = `${user.id}/avatar.${ext}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+        const urlWithBust = `${publicUrl}?t=${Date.now()}`;
+        setAvatarUrl(urlWithBust);
+        await updateProfile({ avatar_url: publicUrl });
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          setAvatarUrl(dataUrl);
+          updateProfile({ avatar_url: dataUrl });
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch {
+      toast.error('تعذّر رفع الصورة — تأكد من إنشاء bucket "avatars" في Supabase Storage');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!form.full_name.trim()) { setError('الاسم الكامل مطلوب'); return; }
     setError(''); setSaving(true);
     try {
-      await updateProfile(form);
+      const ROLE_FIELDS = {
+        owner:          ['syrian_id_number', 'province'],
+        investor:       ['country_of_residence', 'investment_range'],
+        engineer:       ['professional_license_no', 'specialty', 'syndicate_city'],
+        developer:      ['company_name', 'commercial_register_no', 'company_city'],
+        contractor:     ['company_name', 'commercial_register_no', 'contractor_specialty'],
+        internal_clerk: ['department', 'employee_id'],
+        admin:          [],
+      };
+      const roleFields = ROLE_FIELDS[role] || [];
+      const payload = {
+        full_name: form.full_name,
+        phone:     form.phone,
+        ...Object.fromEntries(roleFields.map(k => [k, form[k]])),
+      };
+      await updateProfile(payload);
       setEditMode(false);
     } catch (err) {
       setError(err.message || 'حدث خطأ');
@@ -260,8 +313,18 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="bg-white p-6 mb-5 flex items-center gap-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)]"
           style={{ borderRadius: '8px' }}>
-          <div className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center text-white font-black text-xl shrink-0">
-            {initials}
+          <div className="relative shrink-0 group cursor-pointer" onClick={() => !uploading && avatarInputRef.current?.click()}>
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-brand flex items-center justify-center text-white font-black text-xl">
+              {avatarUrl
+                ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                : initials}
+            </div>
+            <div className="absolute inset-0 rounded-2xl bg-navy/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {uploading
+                ? <Loader2 size={18} className="text-white animate-spin" />
+                : <Camera size={16} className="text-white" />}
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-navy font-black text-lg leading-snug truncate">{user?.full_name || '—'}</p>

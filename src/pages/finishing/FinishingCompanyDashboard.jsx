@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Hammer, Building2, FileText, Star, Clock, CheckCircle,
@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGlobalData } from '../../context/GlobalContext';
 import SEO from '../../components/SEO';
 import toast from 'react-hot-toast';
+import { sendAdminAlert } from '../../utils/emailService';
 
 const STATUS_CFG = {
   'جديد':          { cls: 'bg-teal-50 text-teal-700 border-teal-200',   dot: 'bg-teal-500' },
@@ -77,6 +78,7 @@ const PROFILE_STEPS = [
 
 export default function FinishingCompanyDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     finishingRFQs = [],
     finishingBids = [],
@@ -98,7 +100,7 @@ export default function FinishingCompanyDashboard() {
   const [newMessageText, setNewMessageText] = useState('');
   const [customRate, setCustomRate] = useState(sypExchangeRate);
 
-  const companyName = user?.user_metadata?.company_name || 'شركة دوزان للإكساء والديكور';
+  const companyName = user?.user_metadata?.company_name || user?.full_name || 'شركتك';
   const myProjects = finishingProjects.filter(p => p.contractor === companyName);
   
   // Set default selected project if none
@@ -135,6 +137,14 @@ export default function FinishingCompanyDashboard() {
       notes: bidNotes,
     });
     toast.success('تم إرسال عرض السعر بنجاح إلى العميل!');
+    
+    sendAdminAlert('admin@resurgo.com', 'عرض سعر إكساء جديد', {
+      Company: companyName,
+      Price: bidPrice + ' USD',
+      Duration: bidDuration + ' أسابيع',
+      Notes: bidNotes
+    }).catch(() => {});
+
     setSelectedRFQ(null);
   };
 
@@ -481,7 +491,7 @@ export default function FinishingCompanyDashboard() {
                       </div>
                       <p className={`text-sm font-semibold ${s.done ? 'text-navy/50 line-through' : 'text-navy'}`}>{s.label}</p>
                       {!s.done && (
-                        <button className="mr-auto text-[10px] font-bold text-brand hover:text-navy transition-colors">
+                        <button onClick={() => navigate('/profile')} className="mr-auto text-[10px] font-bold text-brand hover:text-navy transition-colors">
                           إكمال
                         </button>
                       )}

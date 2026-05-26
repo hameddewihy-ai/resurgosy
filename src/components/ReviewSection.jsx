@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ThumbsUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
+import { formatDate } from '../utils/formatDate';
 import toast from 'react-hot-toast';
 
 const LS_KEY = 'resurgo-reviews';
@@ -98,13 +100,33 @@ function ReviewCard({ review, onLike }) {
 }
 
 // ── Public component ──────────────────────────────────────────────────────────
+const normalizeRow = (r) => ({
+  id:         r.id,
+  authorName: r.user_name || 'مستخدم',
+  rating:     r.rating,
+  comment:    r.body || '',
+  date:       formatDate(r.created_at),
+  likes:      r.likes ?? 0,
+});
+
 export default function ReviewSection({ propertyId }) {
   const { user } = useAuth();
-  const [reviews, setReviews] = useState(() => lsLoad(propertyId));
+  const [reviews, setReviews] = useState(() => isConfigured ? [] : lsLoad(propertyId));
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating]   = useState(0);
   const [comment, setComment] = useState('');
   const [guestName, setGuestName] = useState('');
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase
+      .from('reviews')
+      .select('*')
+      .eq('property_id', String(propertyId))
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setReviews(data.map(normalizeRow)); });
+  }, [propertyId]);
 
   const avg  = reviews.length > 0
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
@@ -114,32 +136,48 @@ export default function ReviewSection({ propertyId }) {
     count: reviews.filter((r) => r.rating === s).length,
   }));
 
-  const submit = () => {
+  const submit = async () => {
     if (!rating)        { toast.error('يرجى اختيار تقييم بالنجوم'); return; }
     if (!comment.trim()){ toast.error('يرجى كتابة تعليق'); return; }
     const name = user?.full_name || guestName.trim() || 'مستخدم';
-    const rev = {
-      id:         Date.now(),
-      authorName: name,
-      rating,
-      comment:    comment.trim(),
-      date:       new Date().toLocaleDateString('ar-SY', { year: 'numeric', month: 'long', day: 'numeric' }),
-      likes:      0,
-    };
-    const next = [rev, ...reviews];
-    setReviews(next);
-    lsSave(propertyId, next);
-    setShowForm(false);
-    setRating(0);
-    setComment('');
-    setGuestName('');
+
+    if (isConfigured && user) {
+      const { data, error } = await supabase.from('reviews').insert({
+        property_id: String(propertyId),
+        user_id:     user.id,
+        user_name:   name,
+        rating,
+        body:        comment.trim(),
+        likes:       0,
+      }).select().single();
+      if (!error && data) {
+        setReviews(prev => [normalizeRow(data), ...prev]);
+      }
+    } else {
+      const rev = {
+        id: Date.now(), authorName: name, rating,
+        comment: comment.trim(),
+        date: new Date().toLocaleDateString('ar-SY', { year: 'numeric', month: 'long', day: 'numeric' }),
+        likes: 0,
+      };
+      const next = [rev, ...reviews];
+      setReviews(next);
+      lsSave(propertyId, next);
+    }
+
+    setShowForm(false); setRating(0); setComment(''); setGuestName('');
     toast.success('شكراً! تمت إضافة مراجعتك');
   };
 
   const like = (id) => {
-    const next = reviews.map((r) => r.id === id ? { ...r, likes: r.likes + 1 } : r);
-    setReviews(next);
-    lsSave(propertyId, next);
+    setReviews(prev => prev.map(r => r.id === id ? { ...r, likes: r.likes + 1 } : r));
+    if (isConfigured) {
+      const rev = reviews.find(r => r.id === id);
+      if (rev) supabase.from('reviews').update({ likes: rev.likes + 1 }).eq('id', id).catch(() => {});
+    } else {
+      const next = reviews.map(r => r.id === id ? { ...r, likes: r.likes + 1 } : r);
+      lsSave(propertyId, next);
+    }
   };
 
   return (

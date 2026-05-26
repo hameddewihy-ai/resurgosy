@@ -3,12 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Briefcase, MapPin, DollarSign, Tag, AlignLeft, CheckCircle, Zap } from 'lucide-react';
 import { useGlobalData } from '../../context/GlobalContext';
 import toast from 'react-hot-toast';
+import { SYRIA_GOVERNORATES as CITIES } from '../../data/syriaLocations';
 
 const SPECS = ['إنشائي', 'معماري', 'مدني', 'كهربائي', 'تقدير', 'إشراف', 'ميكانيك', 'مساحة', 'مدير مشاريع', 'مصمم داخلي', 'سلامة', 'BIM', 'محاسب مشاريع'];
-const CITIES = [
-  'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس',
-  'إدلب', 'دير الزور', 'الرقة', 'الحسكة', 'السويداء', 'درعا', 'القنيطرة',
-];
 const TYPES  = ['دوام كامل', 'نصف دوام', 'عن بعد', 'فريلانس'];
 
 const EMPTY = { title: '', company: '', city: 'دمشق', type: 'دوام كامل', spec: 'إنشائي', salaryMin: '', salaryMax: '', desc: '', urgent: false, skillInput: '' };

@@ -1,3 +1,9 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /dashboard
+Disallow: /admin/
+Disallow: /auth
+
+Sitemap: https://resurgosy.com/sitemap.xml
+Sitemap: https://resurgosy.com/sitemap-properties.xml

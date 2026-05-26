@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Globe, Sun, Hammer, Home, Layers, Wrench, Droplets,
+  Globe, Sun, Layers, Wrench, Droplets,
   Sofa, TreePine, Shield, Building2, PaintBucket,
   MapPin, ChevronLeft, ChevronRight, CheckCircle,
   User, Phone, Clock, ArrowLeft, Zap, Star,
-  HardHat, Camera, FileText,
+  HardHat, Camera, FileText, DoorOpen, Mountain, Cpu, Armchair, Package,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SEO from '../../components/SEO';
@@ -14,18 +14,20 @@ import { useGlobalData } from '../../context/GlobalContext';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const SERVICE_CATS = [
-  { id: 'expat',    icon: Globe,       label: 'الإكساء الشامل للمغتربين', sub: 'تسليم مفتاح · متابعة مرئية', hot: true  },
-  { id: 'solar',    icon: Sun,         label: 'الطاقة الشمسية والبطاريات', sub: 'ألواح · إنفرترات · تخزين',   hot: true  },
-  { id: 'restore',  icon: Hammer,      label: 'الترميم والتدعيم الإنشائي', sub: 'تقييم هندسي · تقوية أساسات', hot: false },
-  { id: 'interior', icon: Home,        label: 'الإكساء الداخلي الشامل',   sub: 'دهانات · أرضيات · أسقف',    hot: false },
-  { id: 'floors',   icon: Layers,      label: 'الأرضيات والجدران والأسقف', sub: 'سيراميك · باركيه · جبس',     hot: false },
-  { id: 'mep',      icon: Wrench,      label: 'الكهرباء والسباكة (MEP)',   sub: 'تمديدات · أنابيب · طاقة',   hot: false },
-  { id: 'facade',   icon: Building2,   label: 'إكساء الواجهات الخارجية',  sub: 'حجر · ألمنيوم · كمبوزيت',   hot: false },
-  { id: 'insul',    icon: Droplets,    label: 'العزل والتكييف والتدفئة',  sub: 'مائي · حراري · HVAC',        hot: false },
-  { id: 'decor',    icon: PaintBucket, label: 'الديكور والعمارة الداخلية', sub: 'تصميم · ديكور دمشقي',        hot: false },
-  { id: 'kitch',    icon: Sofa,        label: 'المطابخ والخزائن والأثاث',  sub: 'تصميم · تفصيل · تركيب',     hot: false },
-  { id: 'secure',   icon: Shield,      label: 'الأمن والسلامة والأنظمة',  sub: 'كاميرات · حريق · منزل ذكي', hot: false },
-  { id: 'land',     icon: TreePine,    label: 'تنسيق الحدائق والخارجي',   sub: 'تشجير · ممرات · إضاءة',     hot: false },
+  { id: 'expat',   icon: Globe,       label: 'الإكساء الشامل للمغتربين',          sub: 'تسليم مفتاح · متابعة مرئية',   hot: true  },
+  { id: 'solar',   icon: Sun,         label: 'الطاقة الشمسية والبطاريات',         sub: 'ألواح · إنفرترات · تخزين',     hot: true  },
+  { id: 'floors',  icon: Layers,      label: 'أرضيات وجدران وأسقف',               sub: 'سيراميك · رخام · باركيه · جبس', hot: false },
+  { id: 'doors',   icon: DoorOpen,    label: 'النوافذ والأبواب والأعمال المعدنية', sub: 'ألومنيوم · UPVC · حديد',        hot: false },
+  { id: 'stone',   icon: Mountain,    label: 'حجر وجي ار سي (GRC)',               sub: 'حجر طبيعي · صناعي · GRP',       hot: false },
+  { id: 'decor',   icon: PaintBucket, label: 'ديكور وهندسة',                      sub: 'تصميم 3D · إشراف · رخص',        hot: false },
+  { id: 'insul',   icon: Droplets,    label: 'عزل وأنظمة تسخين وتكييف',           sub: 'مائي · حراري · HVAC · Duct',    hot: false },
+  { id: 'kitch',   icon: Sofa,        label: 'مطابخ وخزائن',                      sub: 'تفصيل · تصميم · تركيب',         hot: false },
+  { id: 'secure',  icon: Shield,      label: 'أنظمة مراقبة وأمان',               sub: 'CCTV · إنذار · Access Control',  hot: false },
+  { id: 'land',    icon: TreePine,    label: 'لاند سكيب (Landscaping)',            sub: 'حدائق · مسابح · برجولات',       hot: false },
+  { id: 'smart',   icon: Cpu,         label: 'أنظمة تحكم ذكية (Smart Home)',      sub: 'إضاءة ذكية · ستائر · سينما',    hot: false },
+  { id: 'mep',     icon: Wrench,      label: 'كهرباء وصحية وصيانة',              sub: 'تمديدات · سباكة · غاز · صيانة', hot: false },
+  { id: 'furnit',  icon: Armchair,    label: 'مفروشات',                           sub: 'مجالس · غرف · ستائر · تنجيد',   hot: false },
+  { id: 'other',   icon: Package,     label: 'خدمات مساندة',                      sub: 'تنظيف · جلي · نقل · هدم',       hot: false },
 ];
 
 const GOVERNORATES = [
@@ -101,13 +103,31 @@ const URGENCY_OPTIONS = [
   { id: 'flex',   label: 'مرن / للتخطيط',   sub: 'لا يوجد ضغط زمني',    icon: Star  },
 ];
 
-const MOCK_COMPANIES = [
-  { id: 1, name: 'شركة دوزان للإكساء',      city: 'دمشق',  rating: 4.9, jobs: 143, badge: 'موثق ومعتمد', spec: 'إكساء شامل للمغتربين' },
-  { id: 2, name: 'أبو النور للتعهدات',       city: 'حلب',   rating: 4.7, jobs: 97,  badge: 'موثق',         spec: 'ترميم وإكساء متكامل' },
-  { id: 3, name: 'Solar Energy Syria',        city: 'دمشق',  rating: 4.8, jobs: 62,  badge: 'موثق ومعتمد', spec: 'طاقة شمسية وبطاريات' },
-  { id: 4, name: 'شركة الفارس للإنشاء',     city: 'ريف دمشق', rating: 4.6, jobs: 78, badge: 'موثق',       spec: 'ترميم إنشائي وتشطيب' },
-  { id: 5, name: 'مؤسسة الشام للديكور',     city: 'دمشق',  rating: 4.5, jobs: 55,  badge: 'قيد التحقق',   spec: 'ديكور وإكساء داخلي'  },
-];
+function scoreCompany(co, form) {
+  let score = 0;
+  if (co.specs?.includes(form.category)) score += 3;
+  const loc = [form.city, form.gov].filter(Boolean).map(s => s?.toLowerCase());
+  const zones = (co.zones?.length ? co.zones : [co.city]).map(z => z?.toLowerCase());
+  if (loc.some(l => zones.some(z => z?.includes(l) || l?.includes(z)))) score += 2;
+  if (form.isExpat && co.expat) score += 2;
+  if (co.badge === 'موثق ومعتمد') score += 1;
+  else if (co.badge === 'موثق') score += 0.5;
+  score += (co.rating || 0) / 5;
+  return score;
+}
+
+function matchCompanies(companies, form) {
+  const scored = companies
+    .map(co => ({ ...co, _score: scoreCompany(co, form) }))
+    .sort((a, b) => b._score - a._score);
+  const relevant = scored.filter(c => c._score > 0).slice(0, 5);
+  if (relevant.length < 3) {
+    const ids = new Set(relevant.map(c => c.id));
+    const fallback = scored.filter(c => !ids.has(c.id)).slice(0, 3 - relevant.length);
+    return [...relevant, ...fallback];
+  }
+  return relevant;
+}
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 function StepProgress({ current, total }) {
@@ -533,8 +553,10 @@ function Step5({ form, setForm }) {
 
 // ── Results screen ────────────────────────────────────────────────────────────
 function ResultsScreen({ form }) {
+  const { finishingCompanies = [] } = useGlobalData();
   const catLabel = SERVICE_CATS.find(c => c.id === form.category)?.label || '';
   const tierLabel = MATERIAL_TIERS.find(t => t.id === form.tier)?.label || '';
+  const matchedCompanies = matchCompanies(finishingCompanies, form);
 
   return (
     <motion.div
@@ -552,7 +574,7 @@ function ResultsScreen({ form }) {
         </motion.div>
         <h2 className="text-navy font-black text-2xl mb-2">تم إرسال طلبك بنجاح!</h2>
         <p className="text-charcoal/60 text-sm max-w-sm mx-auto leading-relaxed">
-          تم مطابقة طلبك مع أفضل {MOCK_COMPANIES.length} شركات موثقة بناءً على موقعك وتخصصك.
+          تم مطابقة طلبك مع أفضل {matchedCompanies.length} شركات موثقة بناءً على موقعك وتخصصك.
           ستصلك عروض الأسعار خلال ساعات.
         </p>
       </div>
@@ -578,7 +600,7 @@ function ResultsScreen({ form }) {
         الشركات المطابقة لطلبك
       </h3>
       <div className="space-y-3 mb-6">
-        {MOCK_COMPANIES.map((co, i) => (
+        {matchedCompanies.map((co, i) => (
           <motion.div
             key={co.id}
             initial={{ opacity: 0, x: 16 }}
@@ -600,7 +622,7 @@ function ResultsScreen({ form }) {
                     : 'bg-amber-50 border-amber-200 text-amber-600'
                 }`}>{co.badge}</span>
               </div>
-              <p className="text-charcoal/50 text-xs mt-0.5">{co.spec} · {co.city}</p>
+              <p className="text-charcoal/50 text-xs mt-0.5">{co.desc?.slice(0, 50) || co.tags?.[0] || ''} · {co.city}</p>
             </div>
             <div className="shrink-0 text-right">
               <div className="flex items-center gap-1 justify-end mb-0.5">
@@ -716,31 +738,32 @@ export default function FinishingRFQPage() {
     }
     if (step === TOTAL_STEPS) {
       setLoading(true);
-      setTimeout(() => {
-        const newRFQ = {
-          client: form.name,
-          city: `${form.gov} — ${form.city}`,
-          district: form.district || '',
-          area: Number(form.area) || 120,
-          services: [
-            SERVICE_CATS.find(c => c.id === form.category)?.label || 'إكساء شامل'
-          ],
-          budget: MATERIAL_TIERS.find(t => t.id === form.tier)?.label || 'متوسط',
-          date: 'الآن',
-          status: 'جديد',
-          urgent: form.urgency === 'asap',
-          phone: form.phone,
-          whatsapp: form.whatsapp || '',
-          isExpat: form.isExpat,
-          country: form.country || '',
-          description: form.description || '',
-          state: form.state || 'ready',
-        };
-        addFinishingRFQ(newRFQ);
-        setLoading(false);
-        setDone(true);
-        pushCrossHint({ emoji: '🏗️', text: 'تصفح الشركات الموثقة في منطقتك مباشرة', label: 'دليل الشركات', to: '/finishing/companies' });
-      }, 1600);
+      const newRFQ = {
+        client: form.name,
+        city: `${form.gov} — ${form.city}`,
+        district: form.district || '',
+        area: Number(form.area) || 120,
+        services: [
+          SERVICE_CATS.find(c => c.id === form.category)?.label || 'إكساء شامل'
+        ],
+        budget: MATERIAL_TIERS.find(t => t.id === form.tier)?.label || 'متوسط',
+        date: 'الآن',
+        status: 'جديد',
+        urgent: form.urgency === 'asap',
+        phone: form.phone,
+        whatsapp: form.whatsapp || '',
+        isExpat: form.isExpat,
+        country: form.country || '',
+        description: form.description || '',
+        propertyState: form.state || 'ready',
+      };
+      Promise.resolve(addFinishingRFQ(newRFQ))
+        .then(() => {
+          setDone(true);
+          pushCrossHint({ emoji: '🏗️', text: 'تصفح الشركات الموثقة في منطقتك مباشرة', label: 'دليل الشركات', to: '/finishing/companies' });
+        })
+        .catch(() => toast.error('تعذّر إرسال الطلب، يرجى المحاولة مجدداً'))
+        .finally(() => setLoading(false));
     } else {
       setStep(s => s + 1);
     }

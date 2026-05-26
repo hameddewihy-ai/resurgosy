@@ -3,22 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, LogOut, PlusCircle, HardHat, Crown, Scale,
-  Search, LayoutDashboard, User, Shield, Zap, ZapOff
+  Search, LayoutDashboard, User, Shield, Zap, ZapOff,
+  LogIn, UserPlus
 } from 'lucide-react';
 import { useAuth, ROLES } from '../context/AuthContext';
 import { useGlobalData } from '../context/GlobalContext';
 import toast from 'react-hot-toast';
 import NotificationsPanel from './NotificationsPanel';
+import GlobalSearchModal from './GlobalSearchModal';
 
-// ── Brand logo mark ───────────────────────────────────────────────────────────
-function LogoMark({ size = 32 }) {
-  const h = Math.round(size * (185 / 300));
-  return (
-    <svg width={size} height={h} viewBox="0 0 300 185" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path fill="#5979bb" d="M167.13,106.06l-7.07,9.63-5.41-10.48-.03-.06-4.62-8.94-4.62,8.94-.03.06-5.41,10.48-7.07-9.63c.14-.28.27-.56.39-.84.11-.24.22-.48.32-.72,3.12-7.19,4.85-15.12,4.85-23.45,0-2.52-.16-5.01-.47-7.44,4.38-1.83,8.43-4.29,12.03-7.29,3.61,2.99,7.66,5.46,12.03,7.29-.31,2.43-.47,4.92-.47,7.44,0,8.33,1.73,16.27,4.85,23.45.1.24.21.49.32.72.12.29.26.56.39.84ZM157.38,119.35l-7.38,10.06-7.38-10.06,7.31-14.14h.13l7.31,14.14ZM300,27.89c-6.94,9.73-14.81,18.77-23.48,26.96l-35.24-19.04c.7-1.36,1.31-2.77,1.83-4.23.15-.43.3-.88.44-1.32.24-.78.46-1.57.65-2.38h56.8ZM273.77,57.41c-.65.59-1.3,1.18-1.96,1.75-6.75,5.96-13.95,11.43-21.52,16.37l-29.64-20.48c.46-.71.88-1.43,1.29-2.16,6.88-2.5,12.76-7.09,16.88-12.99.23-.33.45-.66.67-1l34.28,18.51ZM247.01,77.61c-5.26,3.27-10.7,6.28-16.3,9.01l-19.97-20.31c2.95-2.44,5.6-5.24,7.89-8.31l28.38,19.62ZM216.08,54.47c-7.86,11.27-20.92,18.64-35.7,18.64-5.13,0-10.04-.88-14.6-2.51.61-3.25,1.51-6.41,2.67-9.43,2.55.59,5.21.9,7.94.9,8.83,0,16.91-3.25,23.09-8.61,3.28,1.02,6.78,1.56,10.4,1.56,2.12,0,4.19-.18,6.21-.55ZM173.29,150.15l-23.29,31.56-23.29-31.56,4.35-8.42,18.94,25.83,18.94-25.83,4.35,8.42ZM167.04,138.06l-17.04,23.23-17.04-23.23,7.44-14.38,9.6,13.1,9.6-13.1,7.44,14.38ZM172.03,47.5c-1.48,2.13-2.83,4.37-4.01,6.7-3.58-1.28-6.87-3.17-9.74-5.54-3.4-2.8-6.23-6.27-8.28-10.21-2.05,3.94-4.88,7.41-8.28,10.21-2.87,2.36-6.16,4.25-9.74,5.54-1.19-2.33-2.53-4.57-4.01-6.7.21-.11.43-.23.64-.35,6.82-3.94,11.62-11.01,12.4-19.25.36-3.67-.56-6.35-1.13-7.67-.37-.86-3.46-7.79-9.32-8.13-1.97-.12-3.59.55-4.53,1.05.17-1.63.69-3.99,2.44-5.84,5.1-3.56,14.55-2.64,21.07-2.33,8.47.69,12.24,1.7,16.81-.66,2.46-1.27,4.13-2.99,5.19-4.3-.07,1.41-.44,4.82-2.87,8.14-3.2,4.38-7.76,5.54-8.99,5.81-.42,1.8-.8,3.88-1,6.19-.27,2.93-.03,5.55.16,7.75h0c.78,8.24,5.75,15.32,12.57,19.25.21.12.42.24.64.35ZM0,27.89c6.94,9.73,14.81,18.77,23.48,26.96l35.24-19.04c-.7-1.36-1.31-2.77-1.83-4.23-.15-.43-.3-.88-.44-1.32-.24-.78-.46-1.57-.65-2.38H0ZM26.23,57.41c.65.59,1.3,1.18,1.96,1.75,6.75,5.96,13.95,11.43,21.52,16.37l29.64-20.48c-.46-.71-.88-1.43-1.29-2.16-6.88-2.5-12.76-7.09-16.88-12.99-.23-.33-.45-.66-.67-1L26.23,57.41ZM52.99,77.61c5.26,3.27,10.7,6.28,16.3,9.01l19.97-20.31c-2.95-2.44-5.6-5.24-7.89-8.31L52.99,77.61ZM83.92,54.47c7.86,11.27,20.92,18.64,35.7,18.64,5.13,0,10.04-.88,14.6-2.51-.61-3.25-1.51-6.41-2.67-9.43-2.55.59-5.21.9-7.94.9-8.83,0-16.91-3.25-23.09-8.61-3.28,1.02-6.78,1.56-10.4,1.56-2.12,0-4.19-.18-6.21-.55Z"/>
-    </svg>
-  );
-}
 
 // ── Navigation links — all sections, no dropdown ──────────────────────────────
 const NAV_LINKS = [
@@ -34,126 +27,10 @@ const NAV_LINKS = [
   { to: '/clearing',          label: 'التخليص'     },
   { to: '/valuation-request', label: 'التقييم'     },
   { to: '/news',              label: 'التنبيهات'   },
+  { to: '/market-reports',   label: 'تقارير السوق' },
 ];
 
 const SESSION_FILTERS_KEY = 'resurgo-filters-session';
-
-// ── Universal Search ──────────────────────────────────────────────────────────
-function UniversalSearch() {
-  const [query, setQuery] = useState('');
-  const [open, setOpen]   = useState(false);
-  const navigate          = useNavigate();
-  const { properties }    = useGlobalData();
-  const inputRef          = useRef(null);
-  const wrapRef           = useRef(null);
-
-  const propResults = query.length > 1
-    ? properties.filter(p =>
-        p.title.includes(query) || p.city.includes(query) || p.district?.includes(query)
-      ).slice(0, 4)
-    : [];
-
-  useEffect(() => {
-    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  // `/` keyboard shortcut — focus search
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setOpen(true);
-      }
-      if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
-
-  const go = (to) => { navigate(to); setQuery(''); setOpen(false); };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && query.trim()) {
-      const filters = { city: 'all', type: 'all', status: 'all', minPrice: '', maxPrice: '', search: query.trim() };
-      try { sessionStorage.setItem(SESSION_FILTERS_KEY, JSON.stringify(filters)); } catch {}
-      go('/properties');
-    }
-  };
-
-  return (
-    <div ref={wrapRef} className="relative hidden lg:block shrink-0">
-      <div className={`flex items-center gap-2 bg-cream border rounded-xl px-3 py-2 transition-all duration-200 ${open ? 'border-brand w-48' : 'border-navy/15 w-36'}`}>
-        <Search size={13} className="text-charcoal/40 shrink-0" />
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder="ابحث في المنصة..."
-          className="bg-transparent text-navy text-xs placeholder-charcoal/40 focus:outline-none w-full"
-        />
-        {query ? (
-          <button onClick={() => { setQuery(''); inputRef.current?.focus(); }} className="text-charcoal/30 hover:text-navy shrink-0 transition-colors">
-            <X size={11} />
-          </button>
-        ) : (
-          <kbd className="hidden sm:flex items-center text-[9px] text-charcoal/30 font-mono bg-navy/5 border border-navy/10 rounded px-1 py-0.5 shrink-0">/</kbd>
-        )}
-      </div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.14 }}
-            className="absolute top-full mt-2 right-0 min-w-[280px] bg-white py-2 z-50 shadow-xl rounded-lg"
-            dir="rtl"
-          >
-            {propResults.length > 0 ? (
-              <>
-                <p className="text-charcoal/50 text-[10px] px-3 py-1.5 font-semibold uppercase tracking-wider">عقارات</p>
-                {propResults.map(p => (
-                  <button key={p.id} onClick={() => go(`/properties/${p.id}`)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-cream transition-colors text-right">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
-                      <img src={p.images?.[0] ?? p.image} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-navy text-xs font-medium truncate">{p.title}</p>
-                      <p className="text-charcoal/50 text-[10px]">{p.city} · {p.priceDisplay}</p>
-                    </div>
-                  </button>
-                ))}
-                <div className="border-t border-navy/8 mt-1 pt-1">
-                  <button onClick={() => { handleKeyDown({ key: 'Enter' }); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-brand text-xs hover:bg-cream transition-colors">
-                    <Search size={11} /> عرض كل نتائج "{query}"
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-charcoal/50 text-[10px] px-3 py-1.5 font-semibold uppercase tracking-wider">تصفح المنصة</p>
-                {NAV_LINKS.slice(1).map(({ label, to }) => (
-                  <button key={to} onClick={() => go(to)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-cream transition-colors text-right">
-                    <span className="text-navy text-xs">{label}</span>
-                  </button>
-                ))}
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 // ── Mobile search with live results ──────────────────────────────────────────
 function MobileSearchBar({ onClose }) {
@@ -229,9 +106,10 @@ function MobileSearchBar({ onClose }) {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { lowBandwidthMode, setLowBandwidthMode } = useGlobalData();
-  const navigate         = useNavigate();
-  const location         = useLocation();
-  const [open, setOpen]  = useState(false);
+  const navigate              = useNavigate();
+  const location              = useLocation();
+  const [open, setOpen]       = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (location.state?.accessDenied) {
@@ -239,6 +117,18 @@ export default function Navbar() {
       toast.error(`هذه الصفحة مخصصة لحسابات ${roleLabel} فقط`, { duration: 4000 });
     }
   }, [location.state]);
+
+  // Ctrl+K / Cmd+K to open global search
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (to) => to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -249,13 +139,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-[62px] gap-3" dir="rtl">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="transition-transform duration-200 group-hover:scale-[1.04]">
-              <LogoMark size={30} />
-            </div>
-            <span className="font-display text-[21px] tracking-[0.06em] text-navy group-hover:text-brand transition-colors duration-200 leading-none pt-0.5">
-              RESURGO
-            </span>
+          <Link to="/" className="shrink-0 group transition-transform duration-200 group-hover:scale-[1.04]">
+            <img src="/logo.svg" alt="RESURGO" height="36" className="h-9 w-auto" />
           </Link>
 
           {/* Desktop nav — all links visible, scrolls if needed */}
@@ -283,8 +168,16 @@ export default function Navbar() {
             <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-white/95 to-transparent" />
           </div>
 
-          {/* Search — xl+ only to give room for nav links on lg */}
-          <UniversalSearch />
+          {/* Desktop search button */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden lg:flex items-center gap-2 bg-cream hover:bg-navy/5 border border-navy/12 rounded-xl px-3 py-1.5 text-charcoal/50 hover:text-navy transition-colors shrink-0"
+            title="بحث عالمي (Ctrl+K)"
+          >
+            <Search size={13} />
+            <span className="text-xs">بحث...</span>
+            <kbd className="text-[10px] border border-navy/12 rounded px-1 py-px font-sans leading-none text-charcoal/30">⌃K</kbd>
+          </button>
 
           {/* Auth area */}
           <div className="hidden lg:flex items-center gap-2 shrink-0">
@@ -364,12 +257,24 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/auth" className="text-charcoal hover:text-navy text-xs font-medium transition-colors px-2.5 py-1.5">
-                  دخول
+              <div className="flex items-center gap-1.5">
+                <Link to="/auth"
+                  className="relative group w-8 h-8 flex items-center justify-center rounded-xl border border-navy/12 text-charcoal/60 hover:text-navy hover:border-navy/25 hover:bg-cream transition-all"
+                  title="دخول">
+                  <LogIn size={15} />
+                  <span className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-navy text-white text-[10px] px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                    دخول
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-navy" />
+                  </span>
                 </Link>
-                <Link to="/auth?tab=register" className="btn-cta text-xs py-1.5 px-3">
-                  إنشاء حساب
+                <Link to="/auth?tab=register"
+                  className="relative group w-8 h-8 flex items-center justify-center rounded-xl bg-cta text-white hover:bg-cta/90 transition-all shadow-sm shadow-cta/25"
+                  title="إنشاء حساب">
+                  <UserPlus size={15} />
+                  <span className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-navy text-white text-[10px] px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                    إنشاء حساب
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-navy" />
+                  </span>
                 </Link>
               </div>
             )}
@@ -397,6 +302,14 @@ export default function Navbar() {
             className="lg:hidden bg-white border-t border-navy/8 overflow-hidden"
           >
             <div className="px-4 py-4 space-y-0.5" dir="rtl">
+              {/* Mobile global search button */}
+              <button
+                onClick={() => { setOpen(false); setSearchOpen(true); }}
+                className="flex items-center gap-2 w-full bg-cream border border-navy/12 rounded-xl px-3 py-2.5 text-charcoal/50 hover:text-navy transition-colors mb-1"
+              >
+                <Search size={13} />
+                <span className="text-sm">بحث في الموقع...</span>
+              </button>
               {/* Mobile search — live results */}
               <MobileSearchBar onClose={() => setOpen(false)} />
 
@@ -460,6 +373,8 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </nav>
   );
 }

@@ -289,6 +289,11 @@ export default function TransactionWorkflow({ onComplete }) {
             extracting={extractState.loading}
             extractResult={extractState.result}
           />
+          {extractState.error && (
+            <div className="mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-medium">
+              {extractState.error}
+            </div>
+          )}
           {extractState.result && (
             <button onClick={() => setStep(3)}
               className="btn-cta w-full mt-5 flex items-center justify-center gap-2">

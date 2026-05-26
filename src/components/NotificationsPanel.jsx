@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, CheckCheck, Briefcase, Building2, TrendingUp, Info, Trash2, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
 
 const NOTIF_KEY = 'resurgo-notifications';
 
@@ -46,7 +48,8 @@ const TYPE_META = {
   system:     { icon: Info,        bg: 'bg-navy/8',      iconCls: 'text-navy/60'      },
 };
 
-function loadNotifs() {
+// ── localStorage helpers (fallback when no auth) ──────────────────────────────
+function lsLoad() {
   try {
     const raw = JSON.parse(localStorage.getItem(NOTIF_KEY));
     if (Array.isArray(raw) && raw.length > 0) return raw;
@@ -55,9 +58,20 @@ function loadNotifs() {
   try { localStorage.setItem(NOTIF_KEY, JSON.stringify(seeded)); } catch {}
   return seeded;
 }
-
-function saveNotifs(list) {
+function lsSave(list) {
   try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); } catch {}
+}
+
+function normalizeRow(r) {
+  return {
+    id:    r.id,
+    type:  r.type || 'system',
+    title: r.title,
+    body:  r.body || '',
+    link:  r.link || null,
+    read:  r.read ?? false,
+    date:  r.created_at || new Date().toISOString(),
+  };
 }
 
 function timeAgo(dateStr) {
@@ -71,26 +85,87 @@ function timeAgo(dateStr) {
   return `منذ ${d} يوم`;
 }
 
-export function addNotification(notif) {
-  const list = loadNotifs();
-  const updated = [{ ...notif, id: 'n' + Date.now(), read: false, date: new Date().toISOString() }, ...list].slice(0, 30);
-  saveNotifs(updated);
+// ── Module-level user id for addNotification ──────────────────────────────────
+let _userId = null;
+export function setNotifUserId(id) { _userId = id; }
+
+export async function addNotification(notif) {
+  const targetUserId = notif.user_id || _userId;
+  if (isConfigured && targetUserId) {
+    try {
+      await supabase.from('notifications').insert({
+        user_id: targetUserId,
+        type:    notif.type  || 'system',
+        title:   notif.title,
+        body:    notif.body  || null,
+        link:    notif.link  || null,
+        read:    false,
+      });
+      return; // realtime subscription will update the UI
+    } catch { /* fall through to localStorage */ }
+  }
+  // localStorage fallback — only for self notifications
+  if (notif.user_id && notif.user_id !== _userId) return;
+  const list = lsLoad();
+  const updated = [
+    { ...notif, id: 'n' + Date.now(), read: false, date: new Date().toISOString() },
+    ...list,
+  ].slice(0, 30);
+  lsSave(updated);
   window.dispatchEvent(new CustomEvent('resurgo-notif-update'));
 }
 
+// ── Panel ─────────────────────────────────────────────────────────────────────
 export default function NotificationsPanel() {
-  const [open, setOpen]     = useState(false);
+  const { user }         = useAuth();
+  const useDb            = isConfigured && !!user;
+  const [open, setOpen]  = useState(false);
   const [notifs, setNotifs] = useState([]);
-  const panelRef            = useRef(null);
+  const panelRef         = useRef(null);
 
-  const reload = useCallback(() => setNotifs(loadNotifs()), []);
+  // Keep module-level user id in sync
+  useEffect(() => { setNotifUserId(user?.id ?? null); }, [user]);
 
+  // Load and subscribe
   useEffect(() => {
-    reload();
-    window.addEventListener('resurgo-notif-update', reload);
-    return () => window.removeEventListener('resurgo-notif-update', reload);
-  }, [reload]);
+    if (!useDb) {
+      setNotifs(lsLoad());
+      const handler = () => setNotifs(lsLoad());
+      window.addEventListener('resurgo-notif-update', handler);
+      return () => window.removeEventListener('resurgo-notif-update', handler);
+    }
 
+    // Initial fetch
+    supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => { if (data) setNotifs(data.map(normalizeRow)); });
+
+    // Realtime subscription
+    const channel = supabase
+      .channel(`notifs:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setNotifs(prev => [normalizeRow(payload.new), ...prev].slice(0, 30));
+          } else if (payload.eventType === 'UPDATE') {
+            setNotifs(prev => prev.map(n => n.id === payload.new.id ? normalizeRow(payload.new) : n));
+          } else if (payload.eventType === 'DELETE') {
+            setNotifs(prev => prev.filter(n => n.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [useDb, user?.id]);
+
+  // Click-outside close
   useEffect(() => {
     const h = (e) => { if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', h);
@@ -99,23 +174,32 @@ export default function NotificationsPanel() {
 
   const unread = notifs.filter(n => !n.read).length;
 
-  const markRead = (id) => {
-    const updated = notifs.map(n => n.id === id ? { ...n, read: true } : n);
-    setNotifs(updated);
-    saveNotifs(updated);
+  const markRead = async (id) => {
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    if (useDb) {
+      supabase.from('notifications').update({ read: true }).eq('id', id).catch(() => {});
+    } else {
+      lsSave(notifs.map(n => n.id === id ? { ...n, read: true } : n));
+    }
   };
 
-  const markAllRead = () => {
-    const updated = notifs.map(n => ({ ...n, read: true }));
-    setNotifs(updated);
-    saveNotifs(updated);
+  const markAllRead = async () => {
+    setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    if (useDb) {
+      supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false).catch(() => {});
+    } else {
+      lsSave(notifs.map(n => ({ ...n, read: true })));
+    }
   };
 
-  const deleteNotif = (e, id) => {
+  const deleteNotif = async (e, id) => {
     e.stopPropagation();
-    const updated = notifs.filter(n => n.id !== id);
-    setNotifs(updated);
-    saveNotifs(updated);
+    setNotifs(prev => prev.filter(n => n.id !== id));
+    if (useDb) {
+      supabase.from('notifications').delete().eq('id', id).catch(() => {});
+    } else {
+      lsSave(notifs.filter(n => n.id !== id));
+    }
   };
 
   return (

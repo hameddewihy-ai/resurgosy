@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import {
   Shield, Users, Trash2, Search, TrendingUp, Settings, DollarSign,
@@ -6,12 +6,17 @@ import {
   Briefcase, Wrench, GraduationCap, Scale, FileCheck, Megaphone
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { useGlobalData } from '../../context/GlobalContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 import SEO from '../../components/SEO';
 import toast from 'react-hot-toast';
+import { addNotification } from '../../components/NotificationsPanel';
+import { sendEmail } from '../../utils/sendEmail';
+import { propertyApprovedHtml, propertyRejectedHtml } from '../../utils/emailTemplates';
 
 // Admin seeds are now imported and managed via GlobalContext
 
@@ -91,6 +96,15 @@ export default function MasterAdminDashboard() {
     type: 'solar',
   });
 
+  // Supabase-loaded admin data (null = not yet loaded)
+  const [pendingProps,   setPendingProps]   = useState(null); // pending_review properties
+  const [adminProps,     setAdminProps]     = useState(null);
+  const [adminEquipment, setAdminEquipment] = useState(null);
+  const [adminProfiles,  setAdminProfiles]  = useState(null);
+  const [adminUsers,     setAdminUsers]     = useState(null); // real users from Edge Function
+  const [totalInquiries, setTotalInquiries] = useState(null);
+  const [analyticsData,  setAnalyticsData]  = useState(null); // real metrics from Supabase
+
   const handleStartEditSponsor = (sp) => {
     setEditingSponsorId(sp.id);
     setEditForm({
@@ -115,22 +129,52 @@ export default function MasterAdminDashboard() {
 
   // ── Filters & Memoized Searches ─────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
-    return userList.filter(u =>
-      u.name.includes(userQuery) || u.email.toLowerCase().includes(userQuery.toLowerCase())
+    // Priority: Edge Function (real emails+roles) → profiles table → mock list
+    const source = adminUsers ?? (isConfigured && adminProfiles
+      ? adminProfiles.map(p => ({
+          id:     p.id,
+          name:   p.full_name || 'مستخدم',
+          email:  p.id.slice(0, 8) + '…',
+          role:   'seeker',
+          date:   p.updated_at ? p.updated_at.split('T')[0] : '—',
+          status: 'نشط',
+        }))
+      : userList);
+    return source.filter(u =>
+      u.name?.includes(userQuery) || u.email?.toLowerCase().includes(userQuery.toLowerCase())
     );
-  }, [userList, userQuery]);
+  }, [userList, adminProfiles, adminUsers, userQuery]);
 
   const filteredProps = useMemo(() => {
-    return properties.filter(p =>
+    const source = isConfigured && adminProps
+      ? adminProps.map(p => ({
+          id:           p.id,
+          title:        p.title || 'عقار',
+          city:         p.city  || '',
+          priceDisplay: p.price_usd ? `$${Number(p.price_usd).toLocaleString()}` : '—',
+          images:       Array.isArray(p.images) ? p.images : [],
+        }))
+      : properties;
+    return source.filter(p =>
       p.title.includes(propQuery) || p.city.includes(propQuery)
     );
-  }, [properties, propQuery]);
+  }, [properties, adminProps, propQuery]);
 
   const filteredMachinery = useMemo(() => {
-    return machineryList.filter(m =>
+    const source = isConfigured && adminEquipment
+      ? adminEquipment.map(e => ({
+          id:       e.id,
+          name:     e.name     || 'معدة',
+          provider: adminProfiles?.find(p => p.id === e.owner_id)?.full_name || (e.owner_id ? e.owner_id.slice(0, 8) : '—'),
+          rate:     e.rate     || '',
+          location: e.location || '',
+          status:   e.status   || 'نشط',
+        }))
+      : machineryList;
+    return source.filter(m =>
       m.name.includes(machineryQuery) || m.provider.includes(machineryQuery)
     );
-  }, [machineryList, machineryQuery]);
+  }, [machineryList, adminEquipment, adminProfiles, machineryQuery]);
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(j =>
@@ -138,33 +182,151 @@ export default function MasterAdminDashboard() {
     );
   }, [jobs, jobQuery]);
 
+  // ── Load real data from Supabase ──────────────────────────────────────────
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    setPendingProps(null);
+    supabase.from('properties').select('*')
+      .eq('status', 'pending_review')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setPendingProps(data || []));
+  }, [user, activeTab]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('properties').select('*')
+      .eq('status', 'listed')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => data && setAdminProps(data));
+  }, [user]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('equipment').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => data && setAdminEquipment(data));
+  }, [user]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('profiles').select('*').order('updated_at', { ascending: false })
+      .then(({ data }) => data && setAdminProfiles(data));
+  }, [user]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.from('inquiries').select('id', { count: 'exact', head: true })
+      .then(({ count }) => setTotalInquiries(count || 0));
+  }, [user]);
+
+  // Load real users from admin Edge Function
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase.functions.invoke('admin-users', { method: 'GET' })
+      .then(({ data }) => { if (data?.users) setAdminUsers(data.users); })
+      .catch(() => {});
+  }, [user]);
+
+  // Load analytics metrics
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    Promise.all([
+      supabase.from('profiles').select('created_at'),
+      supabase.from('properties').select('status, city, created_at'),
+      supabase.from('valuation_requests').select('status, created_at'),
+      supabase.from('property_views').select('id', { count: 'exact', head: true }),
+    ]).then(([{ data: profs }, { data: props }, { data: vals }, { count: viewCount }]) => {
+      // Build last-6-month labels
+      const now = new Date();
+      const months = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+        return {
+          label: d.toLocaleDateString('ar', { month: 'short' }),
+          key:   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        };
+      });
+
+      const tally = (rows, field) => {
+        const map = {};
+        (rows || []).forEach(r => {
+          const k = r[field]?.slice(0, 7);
+          if (k) map[k] = (map[k] || 0) + 1;
+        });
+        return map;
+      };
+
+      const profByMonth = tally(profs, 'created_at');
+      const propByMonth = tally(props, 'created_at');
+
+      const chartData = months.map(m => ({
+        name:       m.label,
+        users:      profByMonth[m.key] || 0,
+        properties: propByMonth[m.key] || 0,
+      }));
+
+      // Properties by status
+      const propStatus = {};
+      (props || []).forEach(p => { propStatus[p.status] = (propStatus[p.status] || 0) + 1; });
+
+      // Top cities (max 6)
+      const cityMap = {};
+      (props || []).forEach(p => { if (p.city) cityMap[p.city] = (cityMap[p.city] || 0) + 1; });
+      const topCities = Object.entries(cityMap)
+        .sort(([, a], [, b]) => b - a).slice(0, 6)
+        .map(([name, count]) => ({ name, count }));
+
+      // Valuation requests by status
+      const valStatus = {};
+      (vals || []).forEach(v => { valStatus[v.status] = (valStatus[v.status] || 0) + 1; });
+
+      const hasRealData = chartData.some(d => d.users + d.properties > 0);
+
+      setAnalyticsData({
+        chartData:   hasRealData ? chartData : null,
+        propStatus,
+        topCities,
+        valStatus,
+        totalViews:  viewCount || 0,
+        totalUsers:  profs?.length  || 0,
+        totalProps:  props?.length  || 0,
+        totalVals:   vals?.length   || 0,
+      });
+    }).catch(() => {});
+  }, [user]);
+
   // Security Gate
   if (!user || user.role !== 'admin') {
     return <Navigate to="/dashboard" replace state={{ accessDenied: true, requiredRole: 'admin' }} />;
   }
 
   // ── Action Handlers ────────────────────────────────────────────────────────
-  
+
   // 1. Users
   const toggleUserStatus = (userId) => {
-    setUserList(prev => prev.map(u => {
-      if (u.id === userId) {
-        const nextStatus = u.status === 'نشط' ? 'معطل' : 'نشط';
-        toast.success(`تم تغيير حالة حساب المستخدم إلى: ${nextStatus}`);
-        return { ...u, status: nextStatus };
-      }
-      return u;
-    }));
+    const target = (adminUsers ?? userList).find(u => u.id === userId);
+    const willBan = target?.status === 'نشط';
+    // Optimistic update
+    const updater = u => u.id === userId ? { ...u, status: willBan ? 'معطل' : 'نشط' } : u;
+    setAdminUsers(prev => prev ? prev.map(updater) : prev);
+    setUserList(prev => prev.map(updater));
+    toast.success(`تم ${willBan ? 'تعطيل' : 'تفعيل'} الحساب`);
+    if (isConfigured) {
+      supabase.functions.invoke('admin-users', {
+        method: 'POST', body: { userId, ban: willBan },
+      }).catch(() => toast.error('فشل تحديث الحالة'));
+    }
   };
 
   const handleUpdateRole = (userId, newRole) => {
-    setUserList(prev => prev.map(u => {
-      if (u.id === userId) {
-        toast.success(`تم تحديث دور الصلاحيات بنجاح`);
-        return { ...u, role: newRole };
-      }
-      return u;
-    }));
+    // Optimistic update
+    const updater = u => u.id === userId ? { ...u, role: newRole } : u;
+    setAdminUsers(prev => prev ? prev.map(updater) : prev);
+    setUserList(prev => prev.map(updater));
+    toast.success('تم تحديث دور الصلاحيات');
+    if (isConfigured) {
+      supabase.functions.invoke('admin-users', {
+        method: 'POST', body: { userId, role: newRole },
+      }).catch(() => toast.error('فشل تحديث الدور'));
+    }
   };
 
   // 2. Properties
@@ -176,6 +338,10 @@ export default function MasterAdminDashboard() {
         <div className="flex gap-2">
           <button
             onClick={() => {
+              if (isConfigured) {
+                supabase.from('properties').delete().eq('id', propId)
+                  .then(() => setAdminProps(prev => prev ? prev.filter(p => p.id !== propId) : prev));
+              }
               setProperties(prev => prev.filter(p => p.id !== propId));
               toast.dismiss(t.id);
               toast.success('تم حذف العقار بنجاح');
@@ -190,16 +356,72 @@ export default function MasterAdminDashboard() {
     ), { duration: Infinity });
   };
 
+  const handleApproveProperty = async (prop) => {
+    setPendingProps(prev => prev ? prev.filter(p => p.id !== prop.id) : prev);
+    setAdminProps(prev => prev ? [{ ...prop, status: 'listed' }, ...prev] : prev);
+    toast.success(`تمت الموافقة على "${prop.title}" ونُشر في الدليل`);
+    if (isConfigured) {
+      await supabase.from('properties').update({ status: 'listed' }).eq('id', prop.id);
+      supabase.functions.invoke('match-search-alerts', { body: { ...prop, status: 'listed' } }).catch(() => {});
+    }
+    if (prop.owner_id) {
+      addNotification({
+        user_id: prop.owner_id,
+        type:    'property',
+        title:   '✅ تمت الموافقة على عقارك',
+        body:    `"${prop.title}" منشور الآن في دليل RESURGO`,
+        link:    '/dashboard',
+      });
+      const ownerEmail = adminUsers?.find(u => u.id === prop.owner_id)?.email;
+      sendEmail({
+        to:      ownerEmail,
+        subject: `✅ تمت الموافقة على عقارك — ${prop.title}`,
+        html:    propertyApprovedHtml(prop.title),
+      });
+    }
+  };
+
+  const handleRejectProperty = async (propId, title, ownerId) => {
+    setPendingProps(prev => prev ? prev.filter(p => p.id !== propId) : prev);
+    toast(`تم رفض العقار "${title}" وإخطار المالك`, { icon: '🚫' });
+    if (isConfigured) {
+      await supabase.from('properties').update({ status: 'rejected' }).eq('id', propId);
+    }
+    if (ownerId) {
+      addNotification({
+        user_id: ownerId,
+        type:    'property',
+        title:   'تعذّر نشر عقارك',
+        body:    `"${title}" — يرجى مراجعة البيانات والتواصل مع الدعم`,
+        link:    '/dashboard',
+      });
+      const ownerEmail = adminUsers?.find(u => u.id === ownerId)?.email;
+      sendEmail({
+        to:      ownerEmail,
+        subject: `⚠️ بخصوص طلب نشر عقارك — ${title}`,
+        html:    propertyRejectedHtml(title),
+      });
+    }
+  };
+
   // 3. Equipment (المعدات)
   const toggleMachineryStatus = (eqId) => {
-    setMachineryList(prev => prev.map(m => {
-      if (m.id === eqId) {
-        const nextStatus = m.status === 'نشط' ? 'معطل' : 'نشط';
-        toast.success(`تم تغيير حالة تشغيل المعدات إلى: ${nextStatus}`);
-        return { ...m, status: nextStatus };
-      }
-      return m;
-    }));
+    if (isConfigured && adminEquipment) {
+      const current = adminEquipment.find(m => m.id === eqId);
+      const nextStatus = current?.status === 'نشط' ? 'معطل' : 'نشط';
+      supabase.from('equipment').update({ status: nextStatus }).eq('id', eqId);
+      setAdminEquipment(prev => prev.map(m => m.id === eqId ? { ...m, status: nextStatus } : m));
+      toast.success(`تم تغيير حالة تشغيل المعدات إلى: ${nextStatus}`);
+    } else {
+      setMachineryList(prev => prev.map(m => {
+        if (m.id === eqId) {
+          const nextStatus = m.status === 'نشط' ? 'معطل' : 'نشط';
+          toast.success(`تم تغيير حالة تشغيل المعدات إلى: ${nextStatus}`);
+          return { ...m, status: nextStatus };
+        }
+        return m;
+      }));
+    }
   };
 
   // 4. Developers & Finishing
@@ -306,12 +528,17 @@ export default function MasterAdminDashboard() {
 
           {/* Bento Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            {[
-              { label: 'العقارات والمعدات العامة', val: properties.length + machineryList.length, sub: `عقارات: ${properties.length} · معدات: ${machineryList.length}`, color: 'text-brand', icon: Building2 },
-              { label: 'المطورون وشركات الإكساء', val: developers.length + finishingCompanies.length, sub: 'عضويات نشطة وموثقة', color: 'text-cta', icon: HardHat },
-              { label: 'الضمان والتمويل الجماعي', val: `$${(1245000 + investmentProjects.reduce((acc, p) => acc + p.raised, 0)).toLocaleString()}`, sub: 'ودائع الضمان وجمع التمويل', color: 'text-green-600', icon: DollarSign },
-              { label: 'الخدمات والوظائف الجارية', val: valuationsList.length + clearingList.length + jobs.length, sub: 'معاملات وتقييمات وفرص نشطة', color: 'text-purple-600', icon: Briefcase },
-            ].map((st, i) => (
+            {(() => {
+              const propCount  = adminProps?.length     ?? properties.length;
+              const equipCount = adminEquipment?.length ?? machineryList.length;
+              const userCount  = adminProfiles?.length  ?? 0;
+              return [
+                { label: 'العقارات والمعدات العامة', val: propCount + equipCount,    sub: `عقارات: ${propCount} · معدات: ${equipCount}`,          color: 'text-brand',       icon: Building2 },
+                { label: 'الأعضاء المسجلون',          val: isConfigured ? (userCount || '…') : developers.length + finishingCompanies.length, sub: isConfigured ? 'من قاعدة البيانات' : 'عضويات نشطة وموثقة', color: 'text-cta', icon: HardHat },
+                { label: 'الضمان والتمويل الجماعي',   val: `$${(1245000 + investmentProjects.reduce((acc, p) => acc + p.raised, 0)).toLocaleString()}`, sub: 'ودائع الضمان وجمع التمويل', color: 'text-green-600', icon: DollarSign },
+                { label: 'الخدمات والوظائف الجارية',  val: valuationsList.length + clearingList.length + jobs.length, sub: `استفسارات: ${totalInquiries ?? '…'}`, color: 'text-purple-600', icon: Briefcase },
+              ];
+            })().map((st, i) => (
               <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-4 gpu-transition flex items-start justify-between">
                 <div>
                   <p className="text-white/45 text-[11px] font-bold mb-1">{st.label}</p>
@@ -362,19 +589,29 @@ export default function MasterAdminDashboard() {
               
               {/* Performance Chart */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition">
-                <div className="mb-4">
-                  <h3 className="text-navy font-black text-sm">معدل نمو المشتركين والسيولة</h3>
-                  <p className="text-charcoal/50 text-[11px] mt-0.5">منحنيات تتبع نمو منصة RESURGO خلال الأشهر الخمسة الماضية</p>
+                <div className="mb-4 flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-navy font-black text-sm">نمو المستخدمين والعقارات</h3>
+                    <p className="text-charcoal/50 text-[11px] mt-0.5">
+                      {analyticsData ? 'بيانات حقيقية من Supabase — آخر 6 أشهر' : 'بيانات تجريبية — انتظار Supabase'}
+                    </p>
+                  </div>
+                  {analyticsData && (
+                    <div className="flex items-center gap-3 text-[10px] text-charcoal/50">
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-brand inline-block" /> مستخدمون</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> عقارات</span>
+                    </div>
+                  )}
                 </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={CHART_DATA} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                    <AreaChart data={analyticsData?.chartData ?? CHART_DATA} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#5979bb" stopOpacity={0.2}/>
                           <stop offset="95%" stopColor="#5979bb" stopOpacity={0}/>
                         </linearGradient>
-                        <linearGradient id="colorEscrow" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="colorProps" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
@@ -382,9 +619,9 @@ export default function MasterAdminDashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(31,42,56,0.06)" />
                       <XAxis dataKey="name" stroke="rgba(31,42,56,0.4)" fontSize={10} tickLine={false} />
                       <YAxis stroke="rgba(31,42,56,0.4)" fontSize={10} tickLine={false} />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="users" name="المستخدمون الجدد" stroke="#5979bb" strokeWidth={2.5} fillOpacity={1} fill="url(#colorUsers)" />
-                      <Area type="monotone" dataKey="escrow" name="أموال الضمان (بالآلاف)" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorEscrow)" />
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid rgba(31,42,56,0.1)' }} />
+                      <Area type="monotone" dataKey="users" name="مستخدمون جدد" stroke="#5979bb" strokeWidth={2.5} fillOpacity={1} fill="url(#colorUsers)" />
+                      <Area type="monotone" dataKey={analyticsData ? 'properties' : 'escrow'} name={analyticsData ? 'عقارات جديدة' : 'ضمان (آلاف)'} stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorProps)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -397,16 +634,28 @@ export default function MasterAdminDashboard() {
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between items-center">
                       <span className="text-charcoal/60">بوابة الاتصال:</span>
-                      <span className="bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold text-[10px]">خادم محاكي</span>
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${isConfigured ? 'bg-green-50 text-green-600 border-green-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                        {isConfigured ? 'متصل بـ Supabase ✓' : 'خادم محاكي'}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-charcoal/60">قاعدة البيانات سحابياً:</span>
-                      <span className="bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full font-bold text-[10px]">غير مفعلة (Supabase)</span>
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${isConfigured ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-500 border-red-200'}`}>
+                        {isConfigured ? 'مفعّلة ✓' : 'غير مفعلة (Supabase)'}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-charcoal/60">التخزين الفعلي:</span>
-                      <span className="bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full font-bold text-[10px]">localStorage نشط</span>
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${isConfigured ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                        {isConfigured ? 'Supabase Cloud' : 'localStorage نشط'}
+                      </span>
                     </div>
+                    {totalInquiries !== null && (
+                      <div className="flex justify-between items-center pt-1.5 border-t border-navy/5">
+                        <span className="text-charcoal/60">إجمالي الاستفسارات:</span>
+                        <span className="text-navy font-black text-[11px]">{totalInquiries}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -422,6 +671,119 @@ export default function MasterAdminDashboard() {
               </div>
 
             </div>
+
+            {/* ── Real Analytics Cards ── */}
+            {analyticsData && (
+              <div className="grid md:grid-cols-3 gap-5">
+
+                {/* Properties by status */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-navy/10">
+                  <h4 className="text-navy font-bold text-xs mb-4">العقارات حسب الحالة</h4>
+                  {(() => {
+                    const items = [
+                      { key: 'listed',         label: 'منشور',        color: '#10b981' },
+                      { key: 'pending_review', label: 'قيد المراجعة', color: '#f59e0b' },
+                      { key: 'rejected',       label: 'مرفوض',        color: '#ef4444' },
+                      { key: 'sold',           label: 'مباع',         color: '#6366f1' },
+                      { key: 'archived',       label: 'معلق',         color: '#94a3b8' },
+                    ];
+                    const total = Object.values(analyticsData.propStatus).reduce((a, b) => a + b, 0) || 1;
+                    return (
+                      <div className="space-y-2.5">
+                        {items.map(it => {
+                          const count = analyticsData.propStatus[it.key] || 0;
+                          const pct   = Math.round((count / total) * 100);
+                          return (
+                            <div key={it.key}>
+                              <div className="flex justify-between text-[11px] mb-1">
+                                <span className="text-charcoal/60">{it.label}</span>
+                                <span className="font-bold text-navy">{count} <span className="text-charcoal/40 font-normal">({pct}%)</span></span>
+                              </div>
+                              <div className="h-1.5 bg-navy/6 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${pct}%`, backgroundColor: it.color }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <p className="text-[10px] text-charcoal/35 pt-1 border-t border-navy/5">
+                          الإجمالي: <span className="font-bold text-navy">{analyticsData.totalProps}</span> عقار
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Top cities bar chart */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-navy/10">
+                  <h4 className="text-navy font-bold text-xs mb-4">أكثر المدن نشاطاً</h4>
+                  {analyticsData.topCities.length === 0 ? (
+                    <p className="text-charcoal/35 text-xs text-center py-6">لا توجد بيانات بعد</p>
+                  ) : (
+                    <div className="h-44">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analyticsData.topCities} layout="vertical"
+                          margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                          <XAxis type="number" hide />
+                          <YAxis type="category" dataKey="name" width={55}
+                            stroke="rgba(31,42,56,0.4)" fontSize={10} tickLine={false} />
+                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid rgba(31,42,56,0.1)' }} />
+                          <Bar dataKey="count" name="عقارات" radius={[0, 4, 4, 0]}>
+                            {analyticsData.topCities.map((_, idx) => (
+                              <Cell key={idx} fill={idx === 0 ? '#5979bb' : idx === 1 ? '#f37124' : '#94a3b8'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+
+                {/* Valuation requests + platform KPIs */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-navy/10 space-y-4">
+                  <div>
+                    <h4 className="text-navy font-bold text-xs mb-3">طلبات التقييم</h4>
+                    {(() => {
+                      const vs = analyticsData.valStatus;
+                      const items = [
+                        { key: 'pending',   label: 'معلق',         color: 'bg-amber-400' },
+                        { key: 'in_review', label: 'قيد الدراسة',  color: 'bg-blue-400'  },
+                        { key: 'completed', label: 'مكتمل',        color: 'bg-green-500' },
+                        { key: 'rejected',  label: 'مرفوض',        color: 'bg-red-400'   },
+                      ];
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          {items.map(it => (
+                            <div key={it.key} className="flex items-center gap-2 bg-cream/60 rounded-xl px-3 py-2">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${it.color}`} />
+                              <div>
+                                <p className="text-[10px] text-charcoal/50">{it.label}</p>
+                                <p className="text-sm font-black text-navy leading-none">{vs[it.key] || 0}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="border-t border-navy/5 pt-3 space-y-2">
+                    <h4 className="text-navy font-bold text-xs mb-2">مؤشرات المنصة</h4>
+                    {[
+                      { label: 'إجمالي المستخدمين',  val: analyticsData.totalUsers },
+                      { label: 'إجمالي العقارات',    val: analyticsData.totalProps },
+                      { label: 'إجمالي المشاهدات',   val: analyticsData.totalViews.toLocaleString() },
+                      { label: 'طلبات التقييم',       val: analyticsData.totalVals  },
+                    ].map(kpi => (
+                      <div key={kpi.label} className="flex justify-between text-[11px]">
+                        <span className="text-charcoal/55">{kpi.label}</span>
+                        <span className="font-black text-navy">{kpi.val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
 
             {/* Audit Log / Event Simulation */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-navy/10 gpu-transition">
@@ -614,8 +976,73 @@ export default function MasterAdminDashboard() {
 
         {/* ── 3. Assets Tab (العقارات والمعدات) ── */}
         {activeTab === 'assets' && (
+          <div className="space-y-6">
+
+            {/* ── قائمة انتظار الموافقة ── */}
+            {isConfigured && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-amber-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <h3 className="text-navy font-black text-sm">قائمة انتظار الموافقة</h3>
+                  {pendingProps !== null && (
+                    <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                      {pendingProps.length} عقار
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setPendingProps(null);
+                      supabase.from('properties').select('*')
+                        .eq('status', 'pending_review')
+                        .order('created_at', { ascending: false })
+                        .then(({ data }) => setPendingProps(data || []));
+                    }}
+                    className="mr-auto text-[10px] text-charcoal/40 hover:text-brand transition-colors flex items-center gap-1"
+                  >
+                    ↻ تحديث
+                  </button>
+                </div>
+
+                {pendingProps === null ? (
+                  <div className="space-y-2">
+                    {[1,2].map(i => (
+                      <div key={i} className="border border-navy/8 rounded-xl p-3 flex items-center gap-3 animate-pulse">
+                        <div className="flex-1 h-3 bg-navy/8 rounded" />
+                        <div className="h-6 w-20 bg-navy/8 rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
+                ) : pendingProps.length === 0 ? (
+                  <p className="text-charcoal/40 text-xs text-center py-4">لا توجد عقارات بانتظار الموافقة</p>
+                ) : (
+                  <div className="space-y-2">
+                    {pendingProps.map(p => (
+                      <div key={p.id} className="border border-amber-100 bg-amber-50/40 rounded-xl p-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-navy font-bold text-xs">{p.title}</p>
+                          <p className="text-[10px] text-charcoal/50 mt-0.5">
+                            {p.province} · {p.listing_type === 'rent' ? 'للإيجار' : 'للبيع'}
+                            {p.price_estimate ? ` · $${Number(p.price_estimate).toLocaleString()}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button onClick={() => handleApproveProperty(p)}
+                            className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors">
+                            <Check size={11} /> موافقة
+                          </button>
+                          <button onClick={() => handleRejectProperty(p.id, p.title, p.owner_id)}
+                            className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors">
+                            <X size={11} /> رفض
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           <div className="grid md:grid-cols-2 gap-6">
-            
             {/* العقارات (Properties) */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
@@ -636,7 +1063,17 @@ export default function MasterAdminDashboard() {
               </div>
 
               <div className="space-y-3">
-                {filteredProps.map(p => (
+                {isConfigured && adminProps === null ? (
+                  [1,2,3].map(i => (
+                    <div key={i} className="border border-navy/[0.08] rounded-xl p-3 flex items-center gap-3 animate-pulse">
+                      <div className="w-10 h-8 rounded bg-navy/8" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2.5 w-2/3 bg-navy/8 rounded" />
+                        <div className="h-2 w-1/2 bg-navy/5 rounded" />
+                      </div>
+                    </div>
+                  ))
+                ) : filteredProps.map(p => (
                   <div key={p.id} className="border border-navy/[0.08] rounded-xl p-3 flex items-center justify-between gap-3 hover:bg-cream/10 transition-colors">
                     <div className="flex items-center gap-3">
                       {(p.images?.[0] || p.image) && (
@@ -678,7 +1115,17 @@ export default function MasterAdminDashboard() {
               </div>
 
               <div className="space-y-3">
-                {filteredMachinery.map(m => (
+                {isConfigured && adminEquipment === null ? (
+                  [1,2,3].map(i => (
+                    <div key={i} className="border border-navy/[0.08] rounded-xl p-3 flex items-center gap-3 animate-pulse">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2.5 w-1/2 bg-navy/8 rounded" />
+                        <div className="h-2 w-3/4 bg-navy/5 rounded" />
+                      </div>
+                      <div className="w-14 h-5 bg-navy/8 rounded" />
+                    </div>
+                  ))
+                ) : filteredMachinery.map(m => (
                   <div key={m.id} className="border border-navy/[0.08] rounded-xl p-3 flex items-center justify-between gap-3 hover:bg-cream/10 transition-colors">
                     <div>
                       <h4 className="text-navy font-bold text-xs">{m.name}</h4>
@@ -701,6 +1148,7 @@ export default function MasterAdminDashboard() {
               </div>
             </div>
 
+          </div>
           </div>
         )}
 

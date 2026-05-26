@@ -1,23 +1,31 @@
-import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase, isConfigured } from '../lib/supabase';
+import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, Heart, Scale, Briefcase,
   TrendingUp, Bell, Settings, ChevronRight, MapPin,
   BadgeCheck, Clock, Star, LogOut, MessageCircle,
   User, Phone, Mail, Edit3, CheckCircle, Package,
-  FolderKanban, ArrowLeft, HardHat, FileText, X,
-  Inbox, Globe, Shield, Wrench, Trash2, Save,
+  FolderKanban, FileText, X, Pencil, Folder, FolderPlus,
+  FolderOpen, Trash2, Inbox, Globe, Shield, Wrench,
 } from 'lucide-react';
 import { useAuth, ROLES } from '../context/AuthContext';
 import { useGlobalData } from '../context/GlobalContext';
-import { getSavedIds } from '../utils/savedProps';
+import {
+  getSavedIds, getSavedNotes, getSavedFolders, getSavedFolderMap,
+  setSavedNote, addSavedFolder, deleteSavedFolder, assignFolder,
+} from '../utils/savedProps';
 import { getRecentlyViewed } from '../utils/recentlyViewed';
+import { formatDate } from '../utils/formatDate';
+import { useRealtimeInquiries } from '../hooks/useRealtimeInquiries';
 import toast from 'react-hot-toast';
 import ContractModal from '../components/contracts/ContractModal';
 import HandoverProtocolModal from '../components/contracts/HandoverProtocolModal';
 import StudyWorkspaceModal from '../components/studies/StudyWorkspaceModal';
 import InvestorPortfolio from '../components/invest/InvestorPortfolio';
+import { addNotification } from '../components/NotificationsPanel';
+import DocumentManager from '../components/properties/DocumentManager';
 
 const INQ_KEY       = 'resurgo-inquiries';
 const OWNER_INQ_KEY = 'resurgo-received-inquiries';
@@ -29,20 +37,6 @@ const lsLoad = (key, fallback) => {
   catch { return fallback; }
 };
 
-const MOCK_RECEIVED = [
-  {
-    id: 'ri-1', senderName: 'محمد الأحمد', senderPhone: '+963 933 111 222',
-    propertyTitle: 'شقة فاخرة في المزة — 3 غرف', propertyId: 1,
-    message: 'أودّ الاستفسار عن هذا العقار وتفاصيل الدفع، هل ما زال متاحاً؟',
-    date: '2026-05-14', status: 'جديد',
-  },
-  {
-    id: 'ri-2', senderName: 'سارة حداد', senderPhone: '+963 944 333 444',
-    propertyTitle: 'فيلا مع حديقة — ريف دمشق', propertyId: 3,
-    message: 'هل العقار متاح للمعاينة هذا الأسبوع؟ لدينا عائلة مهتمة.',
-    date: '2026-05-12', status: 'تمت الإجابة',
-  },
-];
 
 const TABS = [
   { id: 'overview',  label: 'نظرة عامة',          icon: LayoutDashboard },
@@ -52,20 +46,11 @@ const TABS = [
   { id: 'inbox',     label: 'الواردة',             icon: Inbox },
   { id: 'myprops',   label: 'عقاراتي',             icon: Building2 },
   { id: 'clearing',  label: 'معاملاتي',            icon: Scale },
+  { id: 'valuations',label: 'طلبات التقييم',       icon: BadgeCheck },
   { id: 'jobs',      label: 'طلباتي',              icon: Briefcase },
   { id: 'profile',   label: 'الملف الشخصي',        icon: User },
 ];
 
-const MOCK_TRANSACTIONS = [
-  { ref: 'SY-CLR-2025-11241', type: 'حصر إرث',      status: 'قيد المراجعة',      date: '2025-05-10', color: 'text-charcoal/60' },
-  { ref: 'SY-CLR-2025-22891', type: 'وكالة قانونية', status: 'مؤرشَف',            date: '2025-05-09', color: 'text-green-600' },
-  { ref: 'SY-CLR-2025-33401', type: 'استرداد ملكية', status: 'بانتظار الموافقة', date: '2025-05-08', color: 'text-amber-600' },
-];
-
-const MOCK_APPLICATIONS = [
-  { id: 'j001', title: 'مهندس إنشائي أول', company: 'شركة الإعمار السورية', status: 'تحت المراجعة', date: '2025-05-10' },
-  { id: 'j003', title: 'مهندس كهرباء — أنظمة ذكية', company: 'مجموعة التقنيات المتقدمة', status: 'مقبول للمقابلة', date: '2025-05-08' },
-];
 
 function StatCard({ icon: Icon, value, label, color }) {
   return (
@@ -84,8 +69,17 @@ function StatCard({ icon: Icon, value, label, color }) {
 export default function DashboardPage() {
   const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab]   = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [newCount, setNewCount] = useState(0);
+
+  // ── Realtime: new inquiries for property owners ──────────────
+  useRealtimeInquiries(user?.id, (inq) => {
+    setReceivedInqs(prev => [inq, ...prev]);
+    setNewCount(n => n + 1);
+    toast.success(`استفسار جديد على: ${inq.propertyTitle}`, { duration: 5000 });
+  });
 
   // Profile edit state (dashboard inline)
   const [editMode,   setEditMode]   = useState(false);
@@ -99,28 +93,199 @@ export default function DashboardPage() {
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
 
   // Data
-  const [inquiries]     = useState(() => lsLoad(INQ_KEY, []));
-  const [receivedInqs]  = useState(() => lsLoad(OWNER_INQ_KEY, MOCK_RECEIVED));
-  const [jobApps]       = useState(() => lsLoad(APPS_KEY, MOCK_APPLICATIONS));
-  const [myInvests]     = useState([]);
-  const [myListings, setMyListings]           = useState(() => lsLoad(LIST_KEY, []));
-  const [editingListingId, setEditingListingId] = useState(null);
-  const [draftListingPrice, setDraftListingPrice] = useState('');
-  const [draftListingStatus, setDraftListingStatus] = useState('');
-  const { properties }  = useGlobalData();
+  const [inquiries,    setInquiries]   = useState(() => isConfigured ? [] : lsLoad(INQ_KEY, []));
+  const [receivedInqs, setReceivedInqs] = useState(() => isConfigured ? [] : lsLoad(OWNER_INQ_KEY, []));
+  const [jobApps, setJobApps] = useState(() => lsLoad(APPS_KEY, []));
+  const [myListings, setMyListings]             = useState(() => isConfigured ? [] : lsLoad(LIST_KEY, []));
+  const [viewCounts, setViewCounts] = useState({});
+  const [expandedDocs, setExpandedDocs] = useState(null); // propertyId with docs panel open
+  const [myValuations, setMyValuations] = useState([]);
+
+  // Saved properties — folders & notes
+  const [savedFolder,    setSavedFolder]    = useState('all');
+  const [savedFolders,   setSavedFolders]   = useState(() => getSavedFolders());
+  const [savedNotes,     setSavedNotes]     = useState(() => getSavedNotes());
+  const [savedFolderMap, setSavedFolderMap] = useState(() => getSavedFolderMap());
+  const [newFolderInput, setNewFolderInput] = useState('');
+  const [showNewFolder,  setShowNewFolder]  = useState(false);
+  const [editingNote,    setEditingNote]    = useState(null); // propId being edited
+  const [noteDraft,      setNoteDraft]      = useState('');
+
+  // Fetch owner's properties from Supabase
+  const fetchMyListings = () => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('properties')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data?.length) { setMyListings([]); return; }
+        const normalized = data.map(p => ({
+          id:            p.id,
+          title:         p.title,
+          city:          p.city || p.province,
+          district:      p.province,
+          status:        p.listing_type === 'rent' ? 'للإيجار' : 'للبيع',
+          listingStatus: p.status,
+          priceDisplay:  p.listing_type === 'rent'
+            ? (p.rent_price    ? `$${Number(p.rent_price).toLocaleString()}/شهر` : '—')
+            : (p.price_estimate ? `$${Number(p.price_estimate).toLocaleString()}` : '—'),
+          images:        p.images || [],
+          area:          p.area,
+          bedrooms:      p.bedrooms,
+          bathrooms:     p.bathrooms,
+          fromSupabase:  true,
+        }));
+        setMyListings(normalized);
+
+        // Fetch view counts for all owned properties in one query
+        const ids = normalized.map(p => String(p.id));
+        supabase
+          .from('property_views')
+          .select('property_id')
+          .in('property_id', ids)
+          .then(({ data: views }) => {
+            if (!views) return;
+            const counts = {};
+            views.forEach(v => {
+              counts[v.property_id] = (counts[v.property_id] || 0) + 1;
+            });
+            setViewCounts(counts);
+          });
+      });
+  };
+  useEffect(() => { fetchMyListings(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Re-fetch when returning from AddPropertyPage
+  useEffect(() => { if (location.state?.propertyAdded) fetchMyListings(); }, [location.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch sent inquiries from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('inquiries')
+      .select('*')
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        setInquiries(data.map(q => ({
+          id:            q.id,
+          propertyId:    q.property_id,
+          propertyTitle: q.property_title,
+          propertyImg:   q.property_img,
+          ownerName:     q.owner_name,
+          message:       q.message,
+          date:          formatDate(q.created_at),
+          status:        q.status,
+        })));
+      });
+  }, [user]);
+
+  // Fetch job applications from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('job_applications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data?.length) return;
+        setJobApps(data.map(a => ({
+          id:      a.job_id  || a.id,
+          title:   a.title,
+          company: a.company,
+          status:  a.status,
+          date:    a.created_at?.slice(0, 10),
+        })));
+      });
+  }, [user]);
+
+  // Fetch received inquiries from Supabase (for property owners)
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('inquiries')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        setReceivedInqs(data.map(q => ({
+          id:            q.id,
+          senderId:      q.sender_id || null,
+          senderName:    q.sender_name || 'زائر',
+          senderPhone:   q.sender_phone || '',
+          propertyTitle: q.property_title,
+          propertyId:    q.property_id,
+          message:       q.message,
+          date:          formatDate(q.created_at),
+          status:        q.status,
+        })));
+      });
+  }, [user]);
+
+  // Fetch client's valuation requests from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('valuation_requests')
+      .select('*, valuation_reports(id, final_value, final_low, final_high, currency, issued_at)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        setMyValuations(data.map(r => ({
+          id:           r.id,
+          clientName:   r.client_name,
+          propertyType: r.property_type,
+          tier:         r.tier,
+          city:         r.city || r.province,
+          area:         r.area,
+          status:       r.status,
+          submittedAt:  r.submitted_at || r.created_at?.slice(0, 10),
+          report:       r.valuation_reports?.[0] || null,
+        })));
+      });
+  }, [user]);
+
+  const { properties, investments, clearingList }  = useGlobalData();
+
+  async function updateInquiryStatus(inq, newStatus) {
+    setReceivedInqs(prev =>
+      prev.map(q => q.id === inq.id ? { ...q, status: newStatus } : q)
+    );
+    if (isConfigured) {
+      supabase.from('inquiries').update({ status: newStatus }).eq('id', inq.id).catch(() => {});
+    }
+    if (inq.senderId) {
+      const msgMap = { 'تم التواصل': 'تم التواصل معك بشأن استفسارك', 'مغلق': 'تم إغلاق استفسارك' };
+      addNotification({
+        user_id: inq.senderId,
+        type:    'property',
+        title:   msgMap[newStatus] || 'تحديث على استفسارك',
+        body:    `عقار: ${inq.propertyTitle}`,
+        link:    '/dashboard',
+      });
+    }
+  }
 
   if (!user) return <Navigate to="/auth" replace />;
 
   const role           = ROLES[user.role];
   const savedIds       = getSavedIds();
-  const savedProps     = properties.filter(p => savedIds.includes(p.id));
+  const savedProps     = properties.filter(p => savedIds.includes(String(p.id)));
   const recentlyViewed = getRecentlyViewed();
 
-  const displayName  = user.full_name || '—';
-  const displayPhone = user.phone     || '—';
+  const displayName   = user.full_name || '—';
+  const displayPhone  = user.phone     || '—';
+  const userClearings = clearingList.filter(c =>
+    c.userId === user.id || c.clientId === user.id || c.user_id === user.id
+  );
 
-  // Merge localStorage listings + GlobalContext properties owned by this user
-  const ownedMockProps = properties
+  // Merge GlobalContext mock properties only when Supabase is not configured
+  const ownedMockProps = isConfigured ? [] : properties
     .filter(p => p.ownerName && user.full_name && p.ownerName === user.full_name)
     .map(p => ({ ...p, isMock: true }));
   const localIds = new Set(myListings.map(l => String(l.id)));
@@ -136,12 +301,15 @@ export default function DashboardPage() {
         <p className="text-xs text-white/60">لا يمكن التراجع عن هذا الإجراء</p>
         <div className="flex gap-2">
           <button
-            onClick={() => {
+            onClick={async () => {
+              if (isConfigured) {
+                await supabase.from('properties').delete().eq('id', id).eq('owner_id', user.id);
+              }
               const updated = myListings.filter(l => String(l.id) !== String(id));
               setMyListings(updated);
               localStorage.setItem(LIST_KEY, JSON.stringify(updated));
               toast.dismiss(t.id);
-              toast('تم حذف العقار من قائمتك');
+              toast('تم حذف العقار');
             }}
             className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 rounded-lg transition-colors">
             نعم، احذف
@@ -156,22 +324,13 @@ export default function DashboardPage() {
     ), { duration: Infinity });
   };
 
-  const startEditListing = (p) => {
-    setEditingListingId(String(p.id));
-    setDraftListingPrice(p.priceDisplay || '');
-    setDraftListingStatus(p.status || 'للبيع');
-  };
-
-  const handleSaveListing = (id) => {
-    const updated = myListings.map(l =>
-      String(l.id) === String(id)
-        ? { ...l, priceDisplay: draftListingPrice, status: draftListingStatus }
-        : l
-    );
-    setMyListings(updated);
-    localStorage.setItem(LIST_KEY, JSON.stringify(updated));
-    setEditingListingId(null);
-    toast.success('تم تحديث بيانات العقار');
+  const handleStatusUpdate = async (id, newStatus) => {
+    if (isConfigured) {
+      await supabase.from('properties').update({ status: newStatus }).eq('id', id).eq('owner_id', user.id);
+    }
+    setMyListings(prev => prev.map(p => String(p.id) === String(id) ? { ...p, listingStatus: newStatus } : p));
+    const labels = { listed: 'تم نشر العقار', archived: 'تم تعليق العقار', sold: 'تم تمييز العقار كمباع' };
+    toast.success(labels[newStatus] || 'تم تحديث الحالة');
   };
 
   const startEdit = () => {
@@ -219,13 +378,17 @@ export default function DashboardPage() {
             </button>
             <div className="relative">
               <button
-                onClick={() => setShowNotifications(v => !v)}
+                onClick={() => { setShowNotifications(v => !v); setNewCount(0); }}
                 className={`w-9 h-9 bg-white shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg flex items-center justify-center transition-colors relative ${showNotifications ? 'text-brand' : 'text-charcoal/50 hover:text-navy'}`}
                 title="الإشعارات">
                 <Bell size={16} />
-                {(inquiries.length > 0 || jobApps.length > 0) && (
+                {newCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-cta text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 animate-pulse">
+                    {newCount > 9 ? '9+' : newCount}
+                  </span>
+                ) : (inquiries.length > 0 || jobApps.length > 0) ? (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-cta rounded-full" />
-                )}
+                ) : null}
               </button>
               <AnimatePresence>
                 {showNotifications && (
@@ -318,178 +481,318 @@ export default function DashboardPage() {
                   <button onClick={() => setIsContractOpen(true)} className="bg-navy/5 text-navy hover:bg-navy/10 font-bold py-2 px-4 text-xs rounded-xl transition-colors border border-navy/10 flex items-center gap-1.5">
                     <FileText size={14} /> إبرام عقد رقمي
                   </button>
-                  <button className="btn-primary py-2 px-4 text-xs">+ مشروع جديد</button>
+                  <Link to="/owner/add-property" className="btn-primary py-2 px-4 text-xs">+ مشروع جديد</Link>
                 </div>
               </div>
 
-              {/* Active Project Lifecycle */}
-              <div className="bg-navy/5 rounded-2xl p-5 border border-navy/10 relative">
-                <div className="absolute top-4 left-4 bg-brand/10 text-brand text-[10px] font-bold px-2 py-1 rounded-full border border-brand/20">
-                  مشروع نشط
-                </div>
-                <h3 className="text-navy font-black text-lg mb-4">برج ياسمين الشام</h3>
-                
-                {/* Timeline / Kanban Steps — horizontal scroll on mobile */}
-                <div className="flex gap-4 overflow-x-auto scrollbar-none pb-1 relative">
-                  {/* Progress Line */}
-                  <div className="hidden sm:block absolute top-1/2 left-0 right-0 h-1 bg-navy/10 -translate-y-1/2 z-0" />
-                  
-                  {/* Step 1: Financing */}
-                  <div className="bg-white p-4 rounded-xl border-2 border-brand relative z-10 shadow-md shrink-0 min-w-[180px] flex-1">
-                    <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center mb-3">
-                      <TrendingUp size={14} />
-                    </div>
-                    <h4 className="text-navy font-bold text-sm mb-1">1. التمويل</h4>
-                    <p className="text-[10px] text-charcoal/50 mb-3">تم جمع 500,000$ بنجاح من المستثمرين.</p>
-                    <Link to="/wallet" className="text-[10px] text-brand font-bold flex items-center gap-1 hover:underline">
-                      عرض ميزانية المشروع <ArrowLeft size={10} />
-                    </Link>
-                  </div>
-
-                  {/* Step 2: Engineering */}
-                  <div className="bg-white p-4 rounded-xl border border-navy/10 relative z-10 hover:border-brand/30 transition-colors shrink-0 min-w-[180px] flex-1">
-                    <div className="w-8 h-8 rounded-full bg-navy/5 text-charcoal/40 flex items-center justify-center mb-3">
-                      <Briefcase size={14} />
-                    </div>
-                    <h4 className="text-navy font-bold text-sm mb-1">2. الدراسات</h4>
-                    <p className="text-[10px] text-charcoal/50 mb-3">تحتاج لمهندس معماري لبدء المخططات.</p>
-                    <Link to="/studies" className="text-[10px] text-brand font-bold flex items-center gap-1 hover:underline">
-                      توظيف مهندس <ArrowLeft size={10} />
-                    </Link>
-                  </div>
-
-                  {/* Step 3: Construction */}
-                  <div className="bg-white p-4 rounded-xl border border-navy/10 relative z-10 hover:border-brand/30 transition-colors shrink-0 min-w-[180px] flex-1">
-                    <div className="w-8 h-8 rounded-full bg-navy/5 text-charcoal/40 flex items-center justify-center mb-3">
-                      <HardHat size={14} />
-                    </div>
-                    <h4 className="text-navy font-bold text-sm mb-1">3. التنفيذ</h4>
-                    <p className="text-[10px] text-charcoal/50 mb-3">استأجر المعدات والمقاولين بضمان المنصة.</p>
-                    <Link to="/equipment" className="text-[10px] text-brand font-bold flex items-center gap-1 hover:underline">
-                      استئجار معدات <ArrowLeft size={10} />
-                    </Link>
-                  </div>
-
-                  {/* Step 4: Sales */}
-                  <div className="bg-white p-4 rounded-xl border border-navy/10 relative z-10 hover:border-brand/30 transition-colors shrink-0 min-w-[180px] flex-1">
-                    <div className="w-8 h-8 rounded-full bg-navy/5 text-charcoal/40 flex items-center justify-center mb-3">
-                      <Building2 size={14} />
-                    </div>
-                    <h4 className="text-navy font-bold text-sm mb-1">4. المبيعات</h4>
-                    <p className="text-[10px] text-charcoal/50 mb-3">اعرض الوحدات الجاهزة للبيع في السوق.</p>
-                    <Link to="/owner/add-property" className="text-[10px] text-brand font-bold flex items-center gap-1 hover:underline">
-                      إدراج عقار <ArrowLeft size={10} />
-                    </Link>
-                  </div>
+              {/* Project lifecycle — empty state for new users */}
+              <div className="bg-navy/5 rounded-2xl p-8 border border-navy/10 text-center">
+                <FolderKanban size={36} className="mx-auto text-navy/20 mb-3" />
+                <p className="text-navy font-bold text-sm mb-1">لا توجد مشاريع نشطة بعد</p>
+                <p className="text-charcoal/50 text-xs mb-5 max-w-sm mx-auto">
+                  أنشئ مشروعك الأول وأدر دورة حياته كاملة — من التمويل والدراسات وحتى البيع.
+                </p>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <Link to="/invest" className="text-[11px] bg-white text-navy border border-navy/15 hover:border-brand/40 hover:text-brand px-4 py-2 rounded-xl font-bold transition-colors flex items-center gap-1.5">
+                    <TrendingUp size={13} /> استثمر في مشروع
+                  </Link>
+                  <Link to="/owner/add-property" className="text-[11px] btn-cta px-4 py-2 flex items-center gap-1.5">
+                    <Building2 size={13} /> أضف عقارك
+                  </Link>
                 </div>
               </div>
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard icon={Heart}     value={savedIds.length}          label="عقار محفوظ"   color="bg-red-500" />
-              <StatCard icon={Scale}     value={MOCK_TRANSACTIONS.length} label="معاملة نشطة" color="bg-brand" />
+              <StatCard icon={Scale}     value={userClearings.length}      label="معاملة نشطة" color="bg-brand" />
               <StatCard icon={Briefcase} value={jobApps.length}           label="طلب توظيف"   color="bg-emerald-500" />
-              <StatCard icon={TrendingUp}value={myInvests.length}         label="استثمار نشط"  color="bg-amber-500" />
+              <StatCard icon={TrendingUp}value={investments.length}       label="استثمار نشط"  color="bg-amber-500" />
             </div>
 
           </motion.div>
         )}
 
         {/* ── Saved properties ── */}
-        {tab === 'saved' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <p className="text-charcoal/60 text-xs mb-5"><span className="text-navy font-bold">{savedProps.length}</span> عقار محفوظ</p>
-            {/* Recently viewed strip */}
-            {recentlyViewed.length > 0 && (
-              <div className="mb-7">
-                <p className="text-charcoal/50 text-[11px] font-bold uppercase tracking-widest mb-3">شاهدتها مؤخراً</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                  {recentlyViewed.map(p => (
-                    <Link key={p.id} to={`/properties/${p.id}`}
-                      className="bg-white shrink-0 w-44 overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] hover:-translate-y-0.5 transition-all rounded-lg">
-                      <div className="h-24 overflow-hidden relative">
-                        <img src={p.image} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-navy/50 to-transparent" />
-                        <span className={`absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded-full font-bold ${p.status === 'للبيع' ? 'bg-cta text-white' : 'bg-brand text-white'}`}>{p.status}</span>
-                      </div>
-                      <div className="p-2.5">
-                        <p className="text-navy text-[11px] font-bold truncate">{p.title}</p>
-                        <p className="text-charcoal/50 text-[10px]">{p.city}</p>
-                        <p className="text-navy font-black text-xs mt-1">{p.priceDisplay}</p>
-                      </div>
-                    </Link>
+        {tab === 'saved' && (() => {
+          const filteredSaved = savedFolder === 'all'
+            ? savedProps
+            : savedProps.filter(p => savedFolderMap[String(p.id)] === savedFolder);
+
+          const handleCreateFolder = () => {
+            if (!newFolderInput.trim()) return;
+            const next = addSavedFolder(newFolderInput);
+            setSavedFolders(next);
+            setSavedFolder(newFolderInput.trim());
+            setNewFolderInput('');
+            setShowNewFolder(false);
+          };
+
+          const handleDeleteFolder = (name) => {
+            const next = deleteSavedFolder(name);
+            setSavedFolders(next);
+            setSavedFolderMap(getSavedFolderMap());
+            if (savedFolder === name) setSavedFolder('all');
+          };
+
+          const handleAssignFolder = (propId, folderName) => {
+            assignFolder(propId, folderName);
+            setSavedFolderMap(getSavedFolderMap());
+          };
+
+          const handleSaveNote = (propId) => {
+            setSavedNote(propId, noteDraft);
+            setSavedNotes(getSavedNotes());
+            setEditingNote(null);
+          };
+
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              {/* ── Folder bar ── */}
+              <div className="mb-5">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {/* All tab */}
+                  <button
+                    onClick={() => setSavedFolder('all')}
+                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      savedFolder === 'all'
+                        ? 'bg-navy text-cream border-navy'
+                        : 'bg-white text-charcoal/60 border-navy/15 hover:border-navy/30'
+                    }`}
+                  >
+                    <Heart size={11} />
+                    الكل
+                    <span className="opacity-60">({savedProps.length})</span>
+                  </button>
+
+                  {/* Custom folders */}
+                  {savedFolders.map(folder => (
+                    <div key={folder} className="shrink-0 flex items-center gap-0.5">
+                      <button
+                        onClick={() => setSavedFolder(folder)}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                          savedFolder === folder
+                            ? 'bg-brand text-white border-brand'
+                            : 'bg-white text-charcoal/60 border-navy/15 hover:border-brand/40'
+                        }`}
+                      >
+                        {savedFolder === folder ? <FolderOpen size={11} /> : <Folder size={11} />}
+                        {folder}
+                        <span className="opacity-60">({savedProps.filter(p => savedFolderMap[String(p.id)] === folder).length})</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFolder(folder)}
+                        className="p-1 text-charcoal/30 hover:text-red-400 transition-colors"
+                        title="حذف المجلد"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
                   ))}
+
+                  {/* New folder */}
+                  {showNewFolder ? (
+                    <div className="shrink-0 flex items-center gap-1">
+                      <input
+                        autoFocus
+                        value={newFolderInput}
+                        onChange={e => setNewFolderInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolder(false); }}
+                        placeholder="اسم المجلد"
+                        className="w-28 px-2.5 py-1.5 text-xs border border-brand/40 rounded-full outline-none focus:ring-2 focus:ring-brand/20"
+                        dir="rtl"
+                      />
+                      <button onClick={handleCreateFolder} className="text-brand hover:text-navy transition-colors text-xs font-bold px-2">حفظ</button>
+                      <button onClick={() => setShowNewFolder(false)} className="text-charcoal/40 hover:text-charcoal/70 transition-colors"><X size={12} /></button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowNewFolder(true)}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-dashed border-navy/20 text-charcoal/40 hover:border-brand/40 hover:text-brand transition-all"
+                    >
+                      <FolderPlus size={11} /> مجلد جديد
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
 
-            {savedProps.length === 0 ? (
-              <div className="bg-white p-12 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-                <Heart size={40} className="mx-auto text-navy/15 mb-4" />
-                <p className="text-navy font-bold text-base mb-1">لم تحفظ أي عقار بعد</p>
-                <p className="text-charcoal/45 text-sm mb-5">اضغط على ❤️ على أي عقار لحفظه هنا</p>
-                <Link to="/properties" className="btn-cta text-sm px-6 py-2.5 inline-flex items-center gap-2">
-                  <Building2 size={15} /> تصفّح العقارات
-                </Link>
-              </div>
-            ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {savedProps.map((p, i) => (
-                <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-                  <Link to={`/properties/${p.id}`} className="block group">
-                    <div className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_16px_48px_rgba(31,42,56,0.13)] transition-all hover:-translate-y-1 rounded-lg">
-                      <div className="relative h-44 overflow-hidden">
-                        <img src={p.images[0]} alt={p.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent" />
-                        <span className={`absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-bold ${p.status === 'للبيع' ? 'bg-cta text-white' : 'bg-brand text-white'}`}>{p.status}</span>
-                      </div>
-                      <div className="p-4">
-                        <p className="text-navy font-bold text-sm mb-1 truncate">{p.title}</p>
-                        <p className="text-charcoal/60 text-xs flex items-center gap-1 mb-2"><MapPin size={11} />{p.city} · {p.district}</p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-navy font-black">{p.priceDisplay}</p>
-                          <div className="flex gap-0.5">
-                            {[...Array(5)].map((_, i) => <Star key={i} size={11} className={i < p.rating ? 'text-yellow-400 fill-yellow-400' : 'text-navy/20'} />)}
+              {/* ── Recently viewed strip ── */}
+              {recentlyViewed.length > 0 && savedFolder === 'all' && (
+                <div className="mb-7">
+                  <p className="text-charcoal/50 text-[11px] font-bold uppercase tracking-widest mb-3">شاهدتها مؤخراً</p>
+                  <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                    {recentlyViewed.map(p => (
+                      <Link key={p.id} to={`/properties/${p.id}`}
+                        className="bg-white shrink-0 w-44 overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] hover:-translate-y-0.5 transition-all rounded-lg">
+                        <div className="h-24 overflow-hidden relative">
+                          <img src={p.image} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-navy/50 to-transparent" />
+                          <span className={`absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded-full font-bold ${p.status === 'للبيع' ? 'bg-cta text-white' : 'bg-brand text-white'}`}>{p.status}</span>
+                        </div>
+                        <div className="p-2.5">
+                          <p className="text-navy text-[11px] font-bold truncate">{p.title}</p>
+                          <p className="text-charcoal/50 text-[10px]">{p.city}</p>
+                          <p className="text-navy font-black text-xs mt-1">{p.priceDisplay}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Cards ── */}
+              {filteredSaved.length === 0 ? (
+                <div className="bg-white p-12 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+                  <Heart size={40} className="mx-auto text-navy/15 mb-4" />
+                  {savedFolder === 'all' ? (
+                    <>
+                      <p className="text-navy font-bold text-base mb-1">لم تحفظ أي عقار بعد</p>
+                      <p className="text-charcoal/45 text-sm mb-5">اضغط على ❤️ على أي عقار لحفظه هنا</p>
+                      <Link to="/properties" className="btn-cta text-sm px-6 py-2.5 inline-flex items-center gap-2">
+                        <Building2 size={15} /> تصفّح العقارات
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-navy font-bold text-base mb-1">هذا المجلد فارغ</p>
+                      <p className="text-charcoal/45 text-sm">افتح بطاقة عقار واضغط "نقل إلى مجلد" لإضافته هنا</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredSaved.map((p, i) => {
+                    const propId      = String(p.id);
+                    const currentNote = savedNotes[propId] || '';
+                    const assignedFld = savedFolderMap[propId] || '';
+                    const isEditingThisNote = editingNote === propId;
+
+                    return (
+                      <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                        <div className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_16px_48px_rgba(31,42,56,0.13)] transition-all rounded-lg">
+                          {/* Image */}
+                          <Link to={`/properties/${p.id}`} className="block group">
+                            <div className="relative h-44 overflow-hidden">
+                              <img src={p.images?.[0] || p.image} alt={p.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent" />
+                              <span className={`absolute top-3 right-3 text-xs px-2.5 py-1 rounded-full font-bold ${p.status === 'للبيع' ? 'bg-cta text-white' : 'bg-brand text-white'}`}>{p.status}</span>
+                              {assignedFld && (
+                                <span className="absolute bottom-2 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full">
+                                  <Folder size={9} /> {assignedFld}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+
+                          {/* Info */}
+                          <div className="p-4 pb-3">
+                            <p className="text-navy font-bold text-sm mb-1 truncate">{p.title}</p>
+                            <p className="text-charcoal/60 text-xs flex items-center gap-1 mb-2"><MapPin size={11} />{p.city} · {p.district}</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-navy font-black">{p.priceDisplay}</p>
+                              <div className="flex gap-0.5">
+                                {[...Array(5)].map((_, si) => <Star key={si} size={11} className={si < p.rating ? 'text-yellow-400 fill-yellow-400' : 'text-navy/20'} />)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Note area */}
+                          {isEditingThisNote ? (
+                            <div className="px-4 pb-3">
+                              <textarea
+                                autoFocus
+                                value={noteDraft}
+                                onChange={e => setNoteDraft(e.target.value)}
+                                placeholder="أضف ملاحظتك..."
+                                rows={2}
+                                className="w-full text-xs border border-brand/30 rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-brand/20 resize-none"
+                                dir="rtl"
+                              />
+                              <div className="flex gap-2 mt-1.5">
+                                <button onClick={() => handleSaveNote(propId)} className="text-xs font-bold text-brand hover:text-navy transition-colors">حفظ</button>
+                                <button onClick={() => setEditingNote(null)} className="text-xs text-charcoal/40 hover:text-charcoal/70 transition-colors">إلغاء</button>
+                              </div>
+                            </div>
+                          ) : currentNote ? (
+                            <div className="px-4 pb-3">
+                              <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2">
+                                <FileText size={11} className="text-amber-500 mt-0.5 shrink-0" />
+                                <p className="text-[11px] text-charcoal/70 flex-1 leading-relaxed">{currentNote}</p>
+                                <button onClick={() => { setEditingNote(propId); setNoteDraft(currentNote); }} className="text-charcoal/30 hover:text-brand transition-colors shrink-0">
+                                  <Pencil size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {/* Action bar */}
+                          <div className="px-4 pb-3 flex items-center gap-3 border-t border-navy/[0.05] pt-2.5">
+                            {/* Add note button */}
+                            <button
+                              onClick={() => { setEditingNote(propId); setNoteDraft(currentNote); }}
+                              className="flex items-center gap-1 text-[11px] text-charcoal/45 hover:text-brand transition-colors"
+                            >
+                              <Pencil size={11} />
+                              {currentNote ? 'تعديل الملاحظة' : 'إضافة ملاحظة'}
+                            </button>
+
+                            {/* Folder picker */}
+                            <div className="mr-auto relative group/folder">
+                              <button className="flex items-center gap-1 text-[11px] text-charcoal/45 hover:text-brand transition-colors">
+                                <Folder size={11} />
+                                {assignedFld || 'نقل لمجلد'}
+                              </button>
+                              {/* Dropdown */}
+                              <div className="absolute bottom-full left-0 mb-1 bg-white border border-navy/10 rounded-xl shadow-xl py-1.5 min-w-[140px] z-20 opacity-0 pointer-events-none group-hover/folder:opacity-100 group-hover/folder:pointer-events-auto transition-all">
+                                <button
+                                  onClick={() => handleAssignFolder(propId, '')}
+                                  className={`w-full text-right px-3 py-1.5 text-xs hover:bg-navy/5 transition-colors ${!assignedFld ? 'text-navy font-bold' : 'text-charcoal/60'}`}
+                                >
+                                  بدون مجلد
+                                </button>
+                                {savedFolders.map(f => (
+                                  <button
+                                    key={f}
+                                    onClick={() => handleAssignFolder(propId, f)}
+                                    className={`w-full text-right px-3 py-1.5 text-xs hover:bg-navy/5 transition-colors flex items-center gap-1.5 ${assignedFld === f ? 'text-brand font-bold' : 'text-charcoal/60'}`}
+                                  >
+                                    <Folder size={10} /> {f}
+                                  </button>
+                                ))}
+                                {savedFolders.length === 0 && (
+                                  <p className="px-3 py-1.5 text-[11px] text-charcoal/40">لا توجد مجلدات بعد</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-            )}
-          </motion.div>
-        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
 
         {/* ── Transactions ── */}
         {tab === 'clearing' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-charcoal/60 text-xs"><span className="text-navy font-bold">{MOCK_TRANSACTIONS.length}</span> معاملة</p>
+              <p className="text-charcoal/60 text-xs"><span className="text-navy font-bold">{userClearings.length}</span> معاملة</p>
               <Link to="/clearing/dashboard" className="text-xs text-brand hover:underline flex items-center gap-1">
                 إدارة المعاملات <ChevronRight size={12} />
               </Link>
             </div>
-            {MOCK_TRANSACTIONS.map((t, i) => (
-              <motion.div key={t.ref} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                className="bg-white p-4 flex items-center gap-4 shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] transition-all"
-                style={{ borderRadius: '8px' }}>
-                <Scale size={16} className="text-brand shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-navy font-bold text-sm">{t.type}</p>
-                  <p className="text-charcoal/50 font-mono text-xs">{t.ref}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-xs font-bold ${t.color}`}>{t.status}</p>
-                  <p className="text-charcoal/40 text-[10px] mt-0.5">{t.date}</p>
-                </div>
-              </motion.div>
-            ))}
-            <Link to="/clearing/dashboard" className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-navy/20 text-charcoal/50 hover:border-brand/40 hover:text-brand rounded-xl text-sm transition-all">
-              + معاملة جديدة
-            </Link>
+            <div className="bg-white p-10 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+              <Scale size={36} className="mx-auto text-navy/15 mb-4" />
+              <p className="text-navy font-bold text-base mb-1">لا توجد معاملات بعد</p>
+              <p className="text-charcoal/45 text-sm mb-5">ابدأ معاملة قانونية جديدة عبر نظام التخليص</p>
+              <Link to="/clearing" className="btn-cta text-sm px-6 py-2.5 inline-flex items-center gap-2">
+                <Scale size={15} /> تصفّح الخدمات القانونية
+              </Link>
+            </div>
           </motion.div>
         )}
 
@@ -516,7 +819,6 @@ export default function DashboardPage() {
               </div>
             ) : (
               combinedListings.map((p, i) => {
-                const isEditing = editingListingId === String(p.id);
                 return (
                   <motion.div key={p.id || i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.07 }} className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] transition-all"
@@ -542,85 +844,254 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
+                        {/* Listing type badge */}
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${p.status === 'للبيع' ? 'bg-cta/10 text-cta border-cta/20' : 'bg-brand/10 text-brand border-brand/20'}`}>
                           {p.status}
                         </span>
+                        {/* Listing status badge */}
+                        {p.listingStatus && (() => {
+                          const cfg = {
+                            pending_review: { label: 'قيد المراجعة', cls: 'bg-amber-50 text-amber-600 border-amber-200' },
+                            listed:         { label: 'منشور ✓',      cls: 'bg-green-50 text-green-600 border-green-200' },
+                            rejected:       { label: 'مرفوض',        cls: 'bg-red-50 text-red-500 border-red-200'       },
+                            sold:           { label: 'مباع',         cls: 'bg-navy/8 text-charcoal/60 border-navy/15'   },
+                            archived:       { label: 'معلق',         cls: 'bg-slate-50 text-slate-500 border-slate-200' },
+                          }[p.listingStatus];
+                          return cfg ? (
+                            <span className={`block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.cls}`}>
+                              {cfg.label}
+                            </span>
+                          ) : null;
+                        })()}
                         <p className="text-navy font-black text-sm mt-1">{p.priceDisplay}</p>
                       </div>
-                      {/* Actions — only for localStorage listings */}
+                      {/* Actions */}
                       {!p.isMock && (
-                        <div className="flex gap-1.5 shrink-0">
-                          <button onClick={() => isEditing ? setEditingListingId(null) : startEditListing(p)}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isEditing ? 'bg-brand/10 text-brand' : 'bg-cream text-charcoal/40 hover:text-brand hover:bg-brand/8'}`}
-                            title="تعديل">
-                            <Edit3 size={13} />
-                          </button>
-                          <button onClick={() => handleDeleteListing(p.id)}
-                            className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center text-charcoal/40 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="حذف">
-                            <Trash2 size={13} />
-                          </button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <div className="flex gap-1.5">
+                            <button onClick={() => navigate(`/owner/edit-property/${p.id}`)}
+                              className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center text-charcoal/40 hover:text-brand hover:bg-brand/8 transition-colors"
+                              title="تعديل">
+                              <Edit3 size={13} />
+                            </button>
+                            <button onClick={() => handleDeleteListing(p.id)}
+                              className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center text-charcoal/40 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="حذف">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                          {/* Status quick actions for Supabase listings */}
+                          {p.fromSupabase && p.listingStatus === 'listed' && (
+                            <div className="flex gap-1.5">
+                              <button onClick={() => handleStatusUpdate(p.id, 'sold')}
+                                title="تمييز كمباع"
+                                className="flex-1 text-[9px] font-bold bg-navy/5 hover:bg-navy/10 text-charcoal/60 rounded px-1.5 py-1 transition-colors">
+                                مباع
+                              </button>
+                              <button onClick={() => handleStatusUpdate(p.id, 'archived')}
+                                title="تعليق الإعلان"
+                                className="flex-1 text-[9px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-600 rounded px-1.5 py-1 transition-colors">
+                                تعليق
+                              </button>
+                            </div>
+                          )}
+                          {p.fromSupabase && (p.listingStatus === 'archived' || p.listingStatus === 'sold') && (
+                            <button onClick={() => handleStatusUpdate(p.id, 'listed')}
+                              className="text-[9px] font-bold bg-green-50 hover:bg-green-100 text-green-600 rounded px-1.5 py-1 transition-colors">
+                              إعادة نشر
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
 
-                    {/* KPI stats row — shown for platform listings that carry analytics */}
-                    {p.isMock && (p.views || p.inquiries || p.savedCount) ? (
+                    {/* Verification timeline — Supabase listings only */}
+                    {p.fromSupabase && p.listingStatus && !['sold','archived'].includes(p.listingStatus) && (
+                      <div className="px-4 pb-3 pt-2 border-t border-navy/[0.05]">
+                        {(() => {
+                          const steps = [
+                            { key: 'submitted',  label: 'تقديم العقار' },
+                            { key: 'reviewing',  label: 'مراجعة RESURGO' },
+                            { key: 'published',  label: p.listingStatus === 'rejected' ? 'مرفوض' : 'نشر في الدليل' },
+                          ];
+                          const activeIdx = p.listingStatus === 'pending_review' ? 1
+                            : p.listingStatus === 'listed'   ? 2
+                            : p.listingStatus === 'rejected' ? 2 : 0;
+                          const isRejected = p.listingStatus === 'rejected';
+                          return (
+                            <div className="flex items-center gap-0">
+                              {steps.map((s, idx) => {
+                                const done    = idx < activeIdx;
+                                const current = idx === activeIdx;
+                                const reject  = isRejected && idx === 2;
+                                return (
+                                  <div key={s.key} className="flex items-center flex-1 min-w-0">
+                                    <div className="flex flex-col items-center shrink-0">
+                                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black transition-colors ${
+                                        reject  ? 'bg-red-500 text-white' :
+                                        done    ? 'bg-green-500 text-white' :
+                                        current ? 'bg-brand text-white ring-2 ring-brand/30' :
+                                                  'bg-navy/10 text-charcoal/40'
+                                      }`}>
+                                        {reject ? '✕' : done ? '✓' : idx + 1}
+                                      </div>
+                                      <span className={`text-[9px] mt-0.5 whitespace-nowrap font-medium ${
+                                        reject  ? 'text-red-500' :
+                                        done    ? 'text-green-600' :
+                                        current ? 'text-brand' : 'text-charcoal/35'
+                                      }`}>{s.label}</span>
+                                    </div>
+                                    {idx < steps.length - 1 && (
+                                      <div className={`flex-1 h-px mx-1 mb-3 ${done ? 'bg-green-400' : 'bg-navy/10'}`} />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* KPI stats row */}
+                    {(p.isMock && (p.views || p.inquiries || p.savedCount)) || p.fromSupabase ? (
                       <div className="px-4 pb-3 flex items-center gap-5 border-t border-navy/[0.05] pt-2.5">
                         <span className="flex items-center gap-1.5 text-[11px] text-charcoal/50">
                           <span className="text-navy/40">👁</span>
-                          <span className="font-semibold text-charcoal/70">{p.views?.toLocaleString()}</span> مشاهدة
+                          <span className="font-semibold text-charcoal/70">
+                            {p.fromSupabase
+                              ? (viewCounts[String(p.id)] || 0).toLocaleString()
+                              : p.views?.toLocaleString()}
+                          </span> مشاهدة
                         </span>
                         <span className="flex items-center gap-1.5 text-[11px] text-charcoal/50">
                           <span className="text-navy/40">📩</span>
-                          <span className="font-semibold text-charcoal/70">{p.inquiries}</span> استفسار
+                          <span className="font-semibold text-charcoal/70">
+                            {p.fromSupabase
+                              ? receivedInqs.filter(r => String(r.propertyId) === String(p.id)).length
+                              : p.inquiries}
+                          </span> استفسار
                         </span>
-                        <span className="flex items-center gap-1.5 text-[11px] text-charcoal/50">
-                          <span className="text-navy/40">❤️</span>
-                          <span className="font-semibold text-charcoal/70">{p.savedCount}</span> حفظ
-                        </span>
+                        {p.isMock && p.savedCount != null && (
+                          <span className="flex items-center gap-1.5 text-[11px] text-charcoal/50">
+                            <span className="text-navy/40">❤️</span>
+                            <span className="font-semibold text-charcoal/70">{p.savedCount}</span> حفظ
+                          </span>
+                        )}
+                        {/* Documents toggle — Supabase listings only */}
+                        {p.fromSupabase && (
+                          <button
+                            onClick={() => setExpandedDocs(expandedDocs === p.id ? null : p.id)}
+                            className="mr-auto flex items-center gap-1 text-[11px] text-charcoal/40 hover:text-brand transition-colors"
+                          >
+                            <FileText size={11} />
+                            الوثائق
+                            <ChevronRight size={10} className={`transition-transform ${expandedDocs === p.id ? 'rotate-90' : ''}`} />
+                          </button>
+                        )}
                       </div>
                     ) : null}
 
-                    {/* Inline edit panel */}
-                    <AnimatePresence>
-                      {isEditing && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden border-t border-navy/8">
-                          <div className="p-4 bg-cream/50 flex flex-wrap gap-3 items-end">
-                            <div className="flex-1 min-w-[140px]">
-                              <label className="text-charcoal/50 text-[10px] font-semibold uppercase tracking-wider mb-1 block">السعر / السعر المعروض</label>
-                              <input value={draftListingPrice} onChange={e => setDraftListingPrice(e.target.value)}
-                                className="input-field text-sm py-2 w-full" placeholder="مثال: 85,000$" />
-                            </div>
-                            <div className="min-w-[120px]">
-                              <label className="text-charcoal/50 text-[10px] font-semibold uppercase tracking-wider mb-1 block">الحالة</label>
-                              <select value={draftListingStatus} onChange={e => setDraftListingStatus(e.target.value)}
-                                className="input-field text-sm py-2 w-full">
-                                <option value="للبيع">للبيع</option>
-                                <option value="للإيجار">للإيجار</option>
-                                <option value="بيع وإيجار">بيع وإيجار</option>
-                                <option value="محجوز">محجوز</option>
-                              </select>
-                            </div>
-                            <div className="flex gap-2">
-                              <button onClick={() => handleSaveListing(p.id)}
-                                className="flex items-center gap-1.5 text-xs font-bold bg-brand text-white px-4 py-2 rounded-xl hover:bg-navy transition-colors">
-                                <Save size={13} /> حفظ
-                              </button>
-                              <button onClick={() => setEditingListingId(null)}
-                                className="text-xs text-charcoal/50 hover:text-navy px-3 py-2 rounded-xl border border-navy/15 transition-colors">
-                                إلغاء
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Documents panel */}
+                    {p.fromSupabase && expandedDocs === p.id && (
+                      <DocumentManager propertyId={p.id} ownerId={user.id} />
+                    )}
+
                   </motion.div>
                 );
               })
             )}
+          </motion.div>
+        )}
+
+        {/* ── Valuation requests ── */}
+        {tab === 'valuations' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-charcoal/60 text-xs">
+                <span className="text-navy font-bold">{myValuations.length}</span> طلب تقييم
+              </p>
+              <Link to="/valuation-request" className="btn-cta text-xs px-4 py-2">+ طلب تقييم جديد</Link>
+            </div>
+
+            {myValuations.length === 0 ? (
+              <div className="bg-white p-10 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+                <BadgeCheck size={36} className="mx-auto text-navy/20 mb-3" />
+                <p className="text-charcoal/50 text-sm">لم تطلب تقييماً بعد</p>
+                <Link to="/valuation-request" className="text-brand text-xs hover:underline mt-2 inline-block">
+                  اطلب تقييماً عقارياً معتمداً
+                </Link>
+              </div>
+            ) : myValuations.map((v, i) => {
+              const STATUS_CFG = {
+                pending:    { label: 'معلّق — بانتظار المراجعة', dot: 'bg-amber-400',  bar: 'w-1/4',  barClr: 'bg-amber-400'  },
+                in_review:  { label: 'قيد الدراسة',              dot: 'bg-brand',      bar: 'w-2/4',  barClr: 'bg-brand'      },
+                certified:  { label: 'معتمد — التقرير جاهز',     dot: 'bg-green-500',  bar: 'w-full', barClr: 'bg-green-500'  },
+                rejected:   { label: 'مرفوض',                    dot: 'bg-red-400',    bar: 'w-full', barClr: 'bg-red-400'    },
+              };
+              const TIER_LBL = { desktop: 'مكتبي', field: 'ميداني', legal: 'قانوني', portfolio: 'محفظة' };
+              const cfg = STATUS_CFG[v.status] || STATUS_CFG.pending;
+              return (
+                <motion.div key={v.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                  className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-navy font-bold text-sm">
+                          {v.propertyType === 'apartment' ? 'شقة' : v.propertyType === 'villa' ? 'فيلا' : v.propertyType === 'commercial' ? 'تجاري' : 'عقار'}
+                          {v.area ? ` · ${v.area} م²` : ''}
+                        </p>
+                        <p className="text-charcoal/55 text-xs mt-0.5 flex items-center gap-1">
+                          <MapPin size={10} /> {v.city || '—'}
+                          <span className="mr-2 bg-navy/8 text-charcoal/50 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            {TIER_LBL[v.tier] || v.tier}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        <span className="text-xs text-charcoal/60 font-medium">{cfg.label}</span>
+                      </div>
+                    </div>
+
+                    {/* Progress timeline */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-[9px] text-charcoal/40 mb-1">
+                        {['تقديم الطلب', 'قيد الدراسة', 'إصدار التقرير'].map(s => (
+                          <span key={s}>{s}</span>
+                        ))}
+                      </div>
+                      <div className="h-1.5 rounded-full bg-navy/8 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-700 ${cfg.bar} ${cfg.barClr}`} />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-charcoal/40 text-[10px]">{v.submittedAt}</span>
+                      {v.status === 'certified' && v.report && (
+                        <div className="text-right">
+                          <p className="text-xs text-charcoal/50">القيمة التقديرية</p>
+                          <p className="text-navy font-black text-sm">
+                            {v.report.currency === 'USD'
+                              ? `$${Number(v.report.final_value).toLocaleString()}`
+                              : `${Number(v.report.final_value).toLocaleString()} ل.س`}
+                          </p>
+                          <p className="text-charcoal/35 text-[10px]">
+                            نطاق: ${Number(v.report.final_low).toLocaleString()} — ${Number(v.report.final_high).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {v.status === 'rejected' && (
+                        <Link to="/valuation-request" className="text-xs text-brand hover:underline font-semibold">
+                          إعادة التقديم
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
 
@@ -747,13 +1218,27 @@ export default function DashboardPage() {
                     </p>
                     <p className="text-charcoal/65 text-xs leading-relaxed line-clamp-2">{inq.message}</p>
                   </div>
-                  <div className="shrink-0 flex flex-col items-end justify-between gap-3">
+                  <div className="shrink-0 flex flex-col items-end justify-between gap-2">
                     <p className="text-charcoal/35 text-[10px]">{inq.date}</p>
                     <a href={`https://wa.me/${inq.senderPhone?.replace(/[\s+\-()]/g, '')}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-[11px] font-bold text-green-600 hover:text-green-700 border border-green-200 hover:border-green-300 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-xl transition-all">
                       <MessageCircle size={12} /> رد واتساب
                     </a>
+                    {inq.status === 'جديد' && (
+                      <button
+                        onClick={() => updateInquiryStatus(inq, 'تم التواصل')}
+                        className="flex items-center gap-1 text-[10px] font-bold text-brand hover:text-navy border border-brand/25 hover:border-brand/50 bg-brand/5 hover:bg-brand/10 px-2 py-1 rounded-lg transition-all">
+                        <CheckCircle size={10} /> تم التواصل
+                      </button>
+                    )}
+                    {inq.status !== 'مغلق' && (
+                      <button
+                        onClick={() => updateInquiryStatus(inq, 'مغلق')}
+                        className="flex items-center gap-1 text-[10px] text-charcoal/40 hover:text-red-500 border border-charcoal/15 hover:border-red-200 hover:bg-red-50 px-2 py-1 rounded-lg transition-all">
+                        <X size={10} /> إغلاق
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))
@@ -837,7 +1322,7 @@ export default function DashboardPage() {
                 user.national_id    ? { icon: Shield, label: 'رقم الهوية الوطنية', value: user.national_id }    : null,
                 user.specialization ? { icon: Wrench, label: 'التخصص / المهنة',   value: user.specialization } : null,
                 user.company_name   ? { icon: Briefcase, label: 'اسم الشركة',      value: user.company_name }   : null,
-                { icon: Clock,   label: 'تاريخ التسجيل',     value: user.created_at?.slice(0, 10) || '—' },
+                { icon: Clock,   label: 'تاريخ التسجيل',     value: formatDate(user.created_at) },
               ].filter(Boolean).map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-4 px-5 py-3.5">
                   <div className="w-8 h-8 rounded-xl bg-brand/8 flex items-center justify-center shrink-0">
@@ -873,13 +1358,13 @@ export default function DashboardPage() {
       <HandoverProtocolModal 
         isOpen={isHandoverOpen} 
         onClose={() => setIsHandoverOpen(false)} 
-        projectName="برج ياسمين الشام"
+        projectName="مشروعي"
       />
 
       <StudyWorkspaceModal
         isOpen={isWorkspaceOpen}
         onClose={() => setIsWorkspaceOpen(false)}
-        projectName="برج ياسمين الشام"
+        projectName="مشروعي"
         onHandover={() => {
           setIsWorkspaceOpen(false);
           setIsHandoverOpen(true);

@@ -31,14 +31,20 @@ export default function ResetPasswordPage() {
   const [reSent,     setReSent]     = useState(false);
   // Whether we have a valid recovery session from the email link
   const [hasSession, setHasSession] = useState(!isConfigured);
+  // Brief wait before showing "invalid link" — PASSWORD_RECOVERY fires async
+  const [waiting, setWaiting] = useState(isConfigured);
 
   useEffect(() => {
     if (!isConfigured) return;
-    // Supabase fires PASSWORD_RECOVERY when the user lands via the reset link
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setHasSession(true);
+      if (event === 'PASSWORD_RECOVERY') {
+        setHasSession(true);
+        setWaiting(false);
+      }
     });
-    return () => subscription.unsubscribe();
+    // If PASSWORD_RECOVERY doesn't fire within 4s, show the resend form
+    const t = setTimeout(() => setWaiting(false), 4000);
+    return () => { subscription.unsubscribe(); clearTimeout(t); };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -91,7 +97,13 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="bg-white p-7 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-          {done ? (
+          {waiting ? (
+            /* ── Waiting for PASSWORD_RECOVERY event ── */
+            <div className="py-10 flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
+              <p className="text-charcoal/55 text-sm">جاري التحقق من الرابط...</p>
+            </div>
+          ) : done ? (
             /* ── Success state ── */
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}

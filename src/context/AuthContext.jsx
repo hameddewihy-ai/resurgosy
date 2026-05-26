@@ -11,6 +11,7 @@ export const ROLES = {
   engineer:      { label: 'مهندس',        labelEn: 'Engineer',           icon: '🏗️' },
   developer:     { label: 'مطوّر',        labelEn: 'Developer',          icon: '🏢' },
   contractor:    { label: 'مقاول معدات',  labelEn: 'Equipment Provider', icon: '⚙️' },
+  finishing_co:  { label: 'شركة إكساء',   labelEn: 'Finishing Company',  icon: '🔨' },
   internal_clerk:{ label: 'كاتب داخلي',  labelEn: 'Internal Clerk',     icon: '📋' },
   appraiser:     { label: 'خبير تقييم',  labelEn: 'Licensed Appraiser', icon: '🏅' },
   admin:         { label: 'مدير',         labelEn: 'Admin',              icon: '🛡️' },
@@ -40,14 +41,56 @@ function sessionToUser(session) {
     professional_license_no: meta.professional_license_no || '',
     specialty:               meta.specialty               || '',
     syndicate_city:          meta.syndicate_city          || '',
-    // Developer / Contractor fields
+    // Developer / Contractor / Finishing fields
     company_name:            meta.company_name            || '',
     commercial_register_no:  meta.commercial_register_no  || '',
     company_city:            meta.company_city            || '',
     contractor_specialty:    meta.contractor_specialty    || '',
+    finishing_specialty:     meta.finishing_specialty     || '',
+    work_areas:              meta.work_areas              || '',
     // Internal clerk fields
     department:              meta.department              || '',
     employee_id:             meta.employee_id             || '',
+  };
+}
+
+// Merge profiles table data on top of auth metadata (profiles table wins)
+function mergeProfile(u, profile) {
+  if (!profile) return u;
+  return {
+    ...u,
+    full_name:               profile.full_name               || u.full_name,
+    phone:                   profile.phone                   || u.phone,
+    province:                profile.province                || u.province,
+    syrian_id_number:        profile.national_id             || u.syrian_id_number,
+    country_of_residence:    profile.country_of_residence    || u.country_of_residence,
+    investment_range:        profile.investment_range        || u.investment_range,
+    professional_license_no: profile.professional_license_no || u.professional_license_no,
+    specialty:               profile.specialty               || u.specialty,
+    company_name:            profile.company_name            || u.company_name,
+    commercial_register_no:  profile.commercial_register_no  || u.commercial_register_no,
+    department:              profile.department              || u.department,
+    employee_id:             profile.employee_id             || u.employee_id,
+  };
+}
+
+// Build a profiles row from the cleaned update object
+function toProfileRow(uid, cleaned) {
+  return {
+    id:                      uid,
+    full_name:               cleaned.full_name               || null,
+    phone:                   cleaned.phone                   || null,
+    province:                cleaned.province                || null,
+    national_id:             cleaned.syrian_id_number        || null,
+    country_of_residence:    cleaned.country_of_residence    || null,
+    investment_range:        cleaned.investment_range        || null,
+    professional_license_no: cleaned.professional_license_no || null,
+    specialty:               cleaned.specialty               || null,
+    company_name:            cleaned.company_name            || null,
+    commercial_register_no:  cleaned.commercial_register_no  || null,
+    department:              cleaned.department              || null,
+    employee_id:             cleaned.employee_id             || null,
+    updated_at:              new Date().toISOString(),
   };
 }
 
@@ -65,13 +108,25 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(sessionToUser(session));
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const base = sessionToUser(session);
+      if (base) {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
+        setUser(mergeProfile(base, profile));
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(sessionToUser(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const base = sessionToUser(session);
+      if (base) {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
+        setUser(mergeProfile(base, profile));
+      } else {
+        setUser(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -101,7 +156,8 @@ export function AuthProvider({ children }) {
         country_of_residence: '', investment_range: '',
         professional_license_no: '', specialty: '', syndicate_city: '',
         company_name: '', commercial_register_no: '', company_city: '',
-        contractor_specialty: '', department: '', employee_id: '',
+        contractor_specialty: '', finishing_specialty: '', work_areas: '',
+        department: '', employee_id: '',
       };
       setUser(mockUser);
       toast.success(`مرحباً ${mockUser.full_name} 👋`);
@@ -138,6 +194,8 @@ export function AuthProvider({ children }) {
         commercial_register_no:  data.commercial_register_no  || '',
         company_city:            data.company_city            || '',
         contractor_specialty:    data.contractor_specialty    || '',
+        finishing_specialty:     data.finishing_specialty     || '',
+        work_areas:              data.work_areas              || '',
         department:              data.department              || '',
         employee_id:             data.employee_id             || '',
       };
@@ -146,7 +204,7 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email:    data.email,
       password: data.password,
       options: {
@@ -166,12 +224,18 @@ export function AuthProvider({ children }) {
           commercial_register_no:  data.commercial_register_no  || '',
           company_city:            data.company_city            || '',
           contractor_specialty:    data.contractor_specialty    || '',
+          finishing_specialty:     data.finishing_specialty     || '',
+          work_areas:              data.work_areas              || '',
           department:              data.department              || '',
           employee_id:             data.employee_id             || '',
         },
       },
     });
     if (error) throw error;
+    // Create profiles row immediately (best-effort — may fail before email confirm)
+    if (signUpData?.user?.id) {
+      await supabase.from('profiles').upsert(toProfileRow(signUpData.user.id, data)).catch(() => {});
+    }
   };
 
   // ── resetPassword ───────────────────────────────────────────
@@ -198,6 +262,7 @@ export function AuthProvider({ children }) {
     }
     const { error } = await supabase.auth.updateUser({ data: cleaned });
     if (error) throw error;
+    await supabase.from('profiles').upsert(toProfileRow(user.id, cleaned));
     setUser(prev => ({ ...prev, ...cleaned }));
     toast.success('تم حفظ التغييرات');
   };

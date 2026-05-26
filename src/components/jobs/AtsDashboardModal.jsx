@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Filter, Briefcase, CheckCircle, XCircle, Users, Clock, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { addNotification } from '../NotificationsPanel';
+import { supabase, isConfigured } from '../../lib/supabase';
 
 const APPS_KEY = 'resurgo-job-apps';
 
-// Seed applicants shown even without real applications
 const SEED_APPLICANTS = [
   { id: 'a1', name: 'م. سامر الأسد',    spec: 'إنشائي', exp: 12, match: 95, status: 'جديد',            skills: ['SAP2000', 'ETABS', 'AutoCAD'],   avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80', source: 'مرشح' },
   { id: 'a2', name: 'م. خالد العمر',    spec: 'إنشائي', exp: 5,  match: 80, status: 'مقبول للمقابلة', skills: ['AutoCAD', 'Revit'],               avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80', source: 'مرشح' },
@@ -14,24 +14,31 @@ const SEED_APPLICANTS = [
   { id: 'a4', name: 'م. أيمن القاسم',   spec: 'إنشائي', exp: 8,  match: 88, status: 'جديد',            skills: ['ETABS', 'SAFE', 'AutoCAD'],       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80', source: 'مرشح' },
 ];
 
-function loadRealApplicants() {
+function normalizeDbApp(a, i) {
+  return {
+    id:     a.id || 'db-' + i,
+    name:   a.applicant_name || 'متقدم',
+    spec:   a.specialization  || 'غير محدد',
+    exp:    0,
+    match:  Math.floor(60 + Math.random() * 30),
+    status: 'جديد',
+    skills: [],
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80',
+    source: 'طلب داخلي',
+    date:   a.created_at?.slice(0, 10),
+  };
+}
+
+function loadLsApplicants() {
   try {
     const raw = JSON.parse(localStorage.getItem(APPS_KEY) || '[]');
     return raw.map((a, i) => ({
-      id:     'real-' + i,
-      name:   'متقدم داخلي — ' + a.title,
-      spec:   a.company || 'غير محدد',
-      exp:    0,
-      match:  Math.floor(60 + Math.random() * 30),
-      status: 'جديد',
-      skills: [],
-      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80`,
-      source: 'طلب داخلي',
-      date:   a.date,
+      id: 'ls-' + i, name: 'متقدم — ' + (a.title || ''), spec: a.company || 'غير محدد',
+      exp: 0, match: Math.floor(60 + Math.random() * 30), status: 'جديد',
+      skills: [], avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80',
+      source: 'طلب داخلي', date: a.date,
     }));
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 export default function AtsDashboardModal({ isOpen, onClose, jobTitle }) {
@@ -40,10 +47,19 @@ export default function AtsDashboardModal({ isOpen, onClose, jobTitle }) {
   const [applicants, setApplicants] = useState([]);
 
   useEffect(() => {
-    if (isOpen) {
-      const real = loadRealApplicants();
-      // Merge: real first, then seeds (avoid duplicate IDs)
-      setApplicants([...real, ...SEED_APPLICANTS]);
+    if (!isOpen) return;
+    if (isConfigured) {
+      supabase
+        .from('job_applications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
+        .then(({ data }) => {
+          const db = data?.length ? data.map(normalizeDbApp) : loadLsApplicants();
+          setApplicants([...db, ...SEED_APPLICANTS]);
+        });
+    } else {
+      setApplicants([...loadLsApplicants(), ...SEED_APPLICANTS]);
     }
   }, [isOpen]);
 

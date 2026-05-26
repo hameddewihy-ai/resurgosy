@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { addNotification } from '../components/NotificationsPanel';
 import { useGlobalData } from '../context/GlobalContext';
+import { supabase, isConfigured } from '../lib/supabase';
 import EscrowCheckoutModal from '../components/wallet/EscrowCheckoutModal';
 import DeveloperProfileModal from '../components/developer/DeveloperProfileModal';
 import KYCGateModal, { isKYCVerified } from '../components/crowdfund/KYCGateModal';
@@ -104,6 +105,17 @@ function InvestCalc({ project }) {
       };
       localStorage.setItem(INV_KEY, JSON.stringify([record, ...existing]));
     } catch {}
+
+    if (isConfigured && user) {
+      supabase.from('crowdfund_investments').insert({
+        user_id:       user.id,
+        project_id:    String(project.id),
+        project_title: project.title,
+        amount,
+        status:        'pending',
+      }).catch(() => {});
+    }
+
     setStep('done');
     toast.success(`تم تقديم طلب استثمارك بمبلغ $${Number(amount).toLocaleString()} ✅`);
     pushCrossHint({ emoji: '📈', text: 'استكشف فرص استثمارية أخرى بعوائد مدروسة', label: 'فرص الاستثمار', to: '/invest' });
@@ -265,6 +277,7 @@ export default function CrowdfundDetailPage() {
   const { id }       = useParams();
   const navigate     = useNavigate();
   const { developers, projects: devProjects, jobs } = useGlobalData();
+  const { user }     = useAuth();
 
   const [activeImg,     setActiveImg]     = useState(0);
   const [faqOpen,       setFaqOpen]       = useState(null);
@@ -321,6 +334,11 @@ export default function CrowdfundDetailPage() {
     const next = saved ? list.filter(i => i !== project.id) : [...list, project.id];
     saveWatchlist(next);
     setSaved(!saved);
+    if (isConfigured && user) {
+      const pid = String(project.id);
+      if (saved) supabase.from('crowdfund_watchlist').delete().eq('user_id', user.id).eq('project_id', pid).catch(() => {});
+      else       supabase.from('crowdfund_watchlist').insert({ user_id: user.id, project_id: pid }).catch(() => {});
+    }
     if (!saved) {
       toast.success('أُضيف إلى قائمة المتابعة');
       addNotification({

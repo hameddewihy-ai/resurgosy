@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { supabase, isConfigured } from '../lib/supabase';
 
 // ── Syrian legal templates (2026) ──────────────────────────────────────────
 export const LEGAL_TEMPLATES = {
@@ -253,55 +254,23 @@ ${d.notes ? 'ملاحظات إضافية:\n' + d.notes : ''}
   },
 };
 
-// ── Mock AI extractor (replace with real LLM call) ─────────────────────────
-async function mockExtractFromDocument(file) {
-  await new Promise((r) => setTimeout(r, 1800)); // simulate processing
+// ── Real AI extractor — calls Supabase Edge Function ──────────────────────
+async function invokeDocumentExtraction(file) {
+  if (!isConfigured) throw new Error('supabase_not_configured');
 
-  const isInheritance = file.name.toLowerCase().includes('irth') ||
-    file.name.includes('إرث') || file.name.includes('حصر') || Math.random() > 0.5;
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
-  if (isInheritance) {
-    return {
-      doc_type: 'inheritance_inventory',
-      confidence: 0.91,
-      extracted: {
-        deceased_name: 'أحمد محمود الصالح',
-        deceased_id: '0612345678901',
-        death_date: '2024-11-03',
-        death_place: 'دمشق',
-        religion: 'مسلم',
-        court: 'محكمة الأحوال الشخصية — دمشق',
-        court_decision_no: 'ق.أ. 2025/441',
-        heirs: `
-  - الزوجة: فاطمة حسن النور      (الرقم الوطني: 0612345678902)  الحصة: الثمن
-  - الابن:  محمد أحمد الصالح     (الرقم الوطني: 0612345678903)  الحصة: عصبة
-  - الابن:  خالد أحمد الصالح     (الرقم الوطني: 0612345678904)  الحصة: عصبة
-  - البنت:  سارة أحمد الصالح     (الرقم الوطني: 0612345678905)  الحصة: نصف العصبة`,
-        real_estate: 'شقة سكنية — دمشق / المزة / رقم السجل العقاري: 4421/دمشق',
-        movables: 'مركبة خاصة + محتويات المسكن',
-        debts: 'لا يوجد',
-      },
-      raw_text_excerpt: 'حصر إرث مستخرج من وثيقة الوفاة المُصدَّقة وشهادة الزواج والسجلات المدنية...',
-    };
-  }
+  const { data, error } = await supabase.functions.invoke('extract-document', {
+    body: { filename: file.name, content: base64, content_type: file.type },
+  });
 
-  return {
-    doc_type: 'power_of_attorney',
-    confidence: 0.87,
-    extracted: {
-      grantor_name: 'رنا سليم الحسيني',
-      grantor_id: '0609876543210',
-      grantor_address: 'دمشق — شارع الثورة — بناء 14',
-      agent_name: 'سامر وليد الخطيب',
-      agent_id: '0609876543211',
-      agent_address: 'دمشق — العدوي — بناء 3 شقة 5',
-      scope: 'تسجيل العقار وإتمام إجراءات البيع والشراء وتوثيق العقود أمام الجهات الرسمية',
-      property_description: 'شقة سكنية في الطابق الثالث، مساحة 120م²، محافظة دمشق، حي المزة، وصف المقطع: 12/دمشق',
-      special_powers: 'التصرف بالبيع والشراء والتسجيل أمام دائرة السجل العقاري',
-      duration: 'سنة واحدة من تاريخ التوثيق',
-    },
-    raw_text_excerpt: 'وكالة مستخرجة من المستند المُقدَّم مع التحقق من الهوية والتوثيق...',
-  };
+  if (error) throw error;
+  return data;
 }
 
 // ── AES-GCM encryption via SubtleCrypto ───────────────────────────────────
@@ -368,11 +337,14 @@ export function useAIClearing() {
   const extractDocument = useCallback(async (file) => {
     setExtractState({ loading: true, result: null, error: null });
     try {
-      const result = await mockExtractFromDocument(file);
+      const result = await invokeDocumentExtraction(file);
       setExtractState({ loading: false, result, error: null });
       return result;
-    } catch {
-      setExtractState({ loading: false, result: null, error: 'فشل في قراءة الوثيقة' });
+    } catch (err) {
+      const msg = err?.message === 'supabase_not_configured'
+        ? 'خدمة القراءة الآلية غير متاحة — يرجى إعداد Supabase أولاً'
+        : 'خدمة القراءة الآلية غير متاحة حالياً';
+      setExtractState({ loading: false, result: null, error: msg });
       return null;
     }
   }, []);

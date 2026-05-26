@@ -568,8 +568,8 @@ export default function AuthPage() {
     if (!form.full_name.trim())              { setError('الاسم الكامل مطلوب'); return; }
     if (!form.email.trim())                  { setError('البريد الإلكتروني مطلوب'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('صيغة البريد الإلكتروني غير صحيحة'); return; }
-    if (form.phone.trim() && !/^(\+963|0)[0-9]{9,10}$/.test(form.phone.trim())) {
-      setError('رقم الهاتف غير صحيح — يبدأ بـ +963 أو 0 ويحتوي 9–10 أرقام'); return;
+    if (form.phone.trim() && !/^\+?[0-9\s-]{7,20}$/.test(form.phone.trim())) {
+      setError('رقم الهاتف غير صحيح — أدخل رقماً دولياً صحيحاً'); return;
     }
     if (form.password.length < 8)            { setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
     if (form.password !== confirmPwd)        { setError('كلمتا المرور غير متطابقتين'); return; }

@@ -8,21 +8,7 @@ import {
 import { useGlobalData } from '../../context/GlobalContext';
 import toast from 'react-hot-toast';
 
-// Static secondary market listings (peer-to-peer, platform-managed prices)
-const SECONDARY_MARKET = [
-  {
-    id: 'sec1', projectId: 'inv-2',
-    project: 'برج تجاري — ساحة المرجة',
-    seller: 'مستثمر مجهول #402',
-    sharesOffered: 2, fixedPricePerShare: 55000, originalPrice: 50000, roiToDate: 10.0,
-  },
-  {
-    id: 'sec2', projectId: 'inv-1',
-    project: 'مجمع سكني — دمشق الجديدة',
-    seller: 'مستثمر مجهول #911',
-    sharesOffered: 1, fixedPricePerShare: 27500, originalPrice: 25000, roiToDate: 10.0,
-  },
-];
+const SECONDARY_MARKET = [];
 
 const CONSTRUCTION_UPDATES = [
   {
@@ -383,39 +369,47 @@ export default function InvestorPortfolio() {
                 </p>
               </div>
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {SECONDARY_MARKET.map(listing => (
-                <div key={listing.id} className="bg-white p-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="text-navy font-bold text-sm mb-1">{listing.project}</h4>
-                      <p className="text-xs text-charcoal/50">البائع: {listing.seller}</p>
+            {SECONDARY_MARKET.length === 0 ? (
+              <div className="bg-white p-10 text-center text-charcoal/50 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+                <ShoppingCart size={36} className="mx-auto mb-3 opacity-30" />
+                <p className="font-semibold mb-1">لا توجد عروض متاحة حالياً</p>
+                <p className="text-xs">ستظهر هنا حصص المستثمرين المعروضة للبيع عند توفّرها.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {SECONDARY_MARKET.map(listing => (
+                  <div key={listing.id} className="bg-white p-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-navy font-bold text-sm mb-1">{listing.project}</h4>
+                        <p className="text-xs text-charcoal/50">البائع: {listing.seller}</p>
+                      </div>
+                      <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
+                        <TrendingUp size={12} /> +{listing.roiToDate}% نمو
+                      </span>
                     </div>
-                    <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
-                      <TrendingUp size={12} /> +{listing.roiToDate}% نمو
-                    </span>
+                    <div className="bg-cream rounded-xl p-3 mb-4 flex justify-between items-center border border-navy/5">
+                      <div>
+                        <p className="text-[10px] text-charcoal/50">الكمية المعروضة</p>
+                        <p className="text-navy font-black">{listing.sharesOffered} حصص</p>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] text-charcoal/50">السعر (للحصة)</p>
+                        <p className="text-cta font-black">${listing.fixedPricePerShare.toLocaleString()}</p>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] text-charcoal/50">الإجمالي</p>
+                        <p className="text-navy font-black">${(listing.sharesOffered * listing.fixedPricePerShare).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleBuyShares(listing)}
+                      className="w-full btn-primary py-2.5 text-xs flex items-center justify-center gap-2">
+                      <ShoppingCart size={14} /> شراء الحصص المعروضة
+                    </button>
                   </div>
-                  <div className="bg-cream rounded-xl p-3 mb-4 flex justify-between items-center border border-navy/5">
-                    <div>
-                      <p className="text-[10px] text-charcoal/50">الكمية المعروضة</p>
-                      <p className="text-navy font-black">{listing.sharesOffered} حصص</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[10px] text-charcoal/50">السعر (للحصة)</p>
-                      <p className="text-cta font-black">${listing.fixedPricePerShare.toLocaleString()}</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[10px] text-charcoal/50">الإجمالي</p>
-                      <p className="text-navy font-black">${(listing.sharesOffered * listing.fixedPricePerShare).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => handleBuyShares(listing)}
-                    className="w-full btn-primary py-2.5 text-xs flex items-center justify-center gap-2">
-                    <ShoppingCart size={14} /> شراء الحصص المعروضة
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 

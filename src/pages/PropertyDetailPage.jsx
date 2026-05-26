@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,15 +16,18 @@ import { addRecentlyViewed } from '../utils/recentlyViewed';
 import NeighborhoodScore from '../components/ui/NeighborhoodScore';
 import { useGlobalData } from '../context/GlobalContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase, isConfigured } from '../lib/supabase';
 import { isSavedProp, toggleSavedProp } from '../utils/savedProps';
 import toast from 'react-hot-toast';
+import { sendAdminAlert, sendInquiryNotification } from '../utils/emailService';
+import { addNotification } from '../components/NotificationsPanel';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-// ── Inquiry localStorage helpers ──────────────────────────────────────────────
+// ── Inquiry helpers ───────────────────────────────────────────────────────────
 const INQ_KEY       = 'resurgo-inquiries';
 const OWNER_INQ_KEY = 'resurgo-received-inquiries';
 const APPT_KEY      = 'resurgo-appointments';
-function saveInquiry(inquiry) {
+function saveInquiryLocal(inquiry) {
   try {
     const all = JSON.parse(localStorage.getItem(INQ_KEY) || '[]');
     all.unshift(inquiry);
@@ -53,10 +57,15 @@ function Lightbox({ images, active, onClose, onPrev, onNext, onSelect }) {
     if (btn) btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }, [active]);
 
-  return (
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/94 z-50 flex flex-col items-center justify-center"
+      className="fixed inset-0 bg-black/95 z-[9999] flex flex-col items-center justify-center"
       onClick={onClose}>
 
       {/* Close */}
@@ -114,7 +123,8 @@ function Lightbox({ images, active, onClose, onPrev, onNext, onSelect }) {
           ))}
         </div>
       )}
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -874,52 +884,116 @@ function ContactCard({ property }) {
 
   const handleBookViewing = () => {
     if (!selDay || !selTime) return;
+    const dateStr = selDay.toLocaleDateString('ar-SY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     try {
       const all = JSON.parse(localStorage.getItem(APPT_KEY) || '[]');
       all.unshift({
         id: Date.now(), propertyId: property.id, propertyTitle: property.title,
-        ownerName: property.ownerName,
-        date: selDay.toLocaleDateString('ar-SY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        time: selTime, status: 'مُجدول',
+        ownerName: property.ownerName, date: dateStr, time: selTime, status: 'مُجدول',
       });
       localStorage.setItem(APPT_KEY, JSON.stringify(all.slice(0, 50)));
     } catch { /* silent */ }
+
+    if (isConfigured && user) {
+      supabase.from('viewing_appointments').insert({
+        user_id:        user.id,
+        property_id:    String(property.id),
+        property_title: property.title,
+        owner_id:       property.owner_id  || null,
+        owner_name:     property.ownerName || null,
+        appt_date:      dateStr,
+        appt_time:      selTime,
+        status:         'مُجدول',
+      }).catch(() => {});
+    }
+
     toast.success('تم حجز موعد المعاينة!');
     setApptBooked(true);
+    
+    // إرسال إيميل للإدارة
+    sendAdminAlert('admin@resurgo.com', 'طلب حجز معاينة جديد', {
+      PropertyTitle: property.title,
+      Date: selDay.toLocaleDateString('ar-SY'),
+      Time: selTime
+    }).catch(() => {});
+
     pushCrossHint({ emoji: '🔨', text: 'جاهز لإكساء هذا العقار؟ احصل على عروض أسعار من شركات موثقة', label: 'منصة الإكساء', to: '/finishing' });
   };
 
-  const handleSend = () => {
+  const { user } = useAuth();
+
+  const handleSend = async () => {
     if (!msg.trim() || sending) return;
     setSending(true);
-    const date = new Date().toLocaleDateString('ar-SY', { year: 'numeric', month: 'long', day: 'numeric' });
     pushCrossHint({ emoji: '📊', text: 'هل تريد تقييماً هندسياً لهذا العقار؟', label: 'طلب تقييم', to: '/valuation-request' });
-    saveInquiry({
-      id:            Date.now(),
-      propertyId:    property.id,
-      propertyTitle: property.title,
-      propertyImg:   property.images[0],
-      ownerName:     property.ownerName,
-      message:       msg.trim(),
-      date,
-      status:        'مُرسَل',
-    });
-    // Write to owner inbox so it appears in their dashboard → الواردة tab
+
     try {
-      const received = JSON.parse(localStorage.getItem(OWNER_INQ_KEY) || '[]');
-      received.unshift({
-        id:            `ri-${Date.now()}`,
-        senderName:    'زائر',
-        senderPhone:   '',
-        propertyTitle: property.title,
-        propertyId:    property.id,
-        message:       msg.trim(),
-        date,
-        status:        'جديد',
-      });
-      localStorage.setItem(OWNER_INQ_KEY, JSON.stringify(received.slice(0, 100)));
-    } catch { /* silent */ }
-    setTimeout(() => { setSending(false); setSent(true); }, 600);
+      if (isConfigured && user) {
+        const { error } = await supabase.from('inquiries').insert({
+          sender_id:      user.id,
+          owner_id:       property.owner_id || null,
+          property_id:    String(property.id),
+          property_title: property.title,
+          property_img:   property.images?.[0] || null,
+          owner_name:     property.ownerName   || null,
+          sender_name:    user.full_name        || null,
+          sender_phone:   user.phone            || null,
+          message:        msg.trim(),
+          status:         'جديد',
+        });
+        if (error) throw error;
+        // إشعار داخلي للمالك
+        if (property.owner_id) {
+          addNotification({
+            user_id: property.owner_id,
+            type:    'property',
+            title:   'استفسار جديد على عقارك',
+            body:    `${user.full_name || 'زائر'}: ${msg.trim().slice(0, 80)}`,
+            link:    '/dashboard',
+          });
+        }
+      } else {
+        const date = new Date().toLocaleDateString('ar-SY', { year: 'numeric', month: 'long', day: 'numeric' });
+        saveInquiryLocal({
+          id: Date.now(), propertyId: property.id, propertyTitle: property.title,
+          propertyImg: property.images?.[0], ownerName: property.ownerName,
+          message: msg.trim(), date, status: 'مُرسَل',
+        });
+        try {
+          const received = JSON.parse(localStorage.getItem(OWNER_INQ_KEY) || '[]');
+          received.unshift({
+            id: `ri-${Date.now()}`, senderName: 'زائر', senderPhone: '',
+            propertyTitle: property.title, propertyId: property.id,
+            message: msg.trim(), date, status: 'جديد',
+          });
+          localStorage.setItem(OWNER_INQ_KEY, JSON.stringify(received.slice(0, 100)));
+        } catch { /* silent */ }
+      }
+      setSent(true);
+
+      // إشعار إيميل للمالك
+      if (property.owner_id) {
+        sendInquiryNotification(
+          property.owner_id,
+          property.title,
+          user?.full_name || 'زائر',
+          user?.phone    || '',
+          msg.trim()
+        );
+      }
+      // إشعار إيميل للإدارة
+      sendAdminAlert('admin@resurgo.com', 'استفسار جديد عن عقار', {
+        PropertyTitle: property.title,
+        SenderName: user?.full_name || 'زائر',
+        SenderPhone: user?.phone || '',
+        Message: msg.trim()
+      }).catch(() => {});
+      
+    } catch {
+      toast.error('تعذّر إرسال الاستفسار، يرجى المحاولة مجدداً');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -927,10 +1001,10 @@ function ContactCard({ property }) {
       {/* Owner row */}
       <div className="flex items-center gap-3 pb-3 border-b border-navy/10">
         <div className="w-10 h-10 rounded-full bg-brand/10 border-2 border-brand/20 flex items-center justify-center text-base font-black text-brand shrink-0">
-          {property.ownerName[0]}
+          {(property.ownerName ?? 'م')[0]}
         </div>
         <div>
-          <p className="text-navy font-bold text-sm">{property.ownerName}</p>
+          <p className="text-navy font-bold text-sm">{property.ownerName ?? 'مالك خاص'}</p>
           <p className="text-charcoal/55 text-xs flex items-center gap-1 mt-0.5">
             <CheckCircle size={11} className="text-green-500" /> مالك موثّق
           </p>
@@ -1254,13 +1328,68 @@ function StickyBar({ property }) {
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
+const DETAIL_TYPE_MAP = { residential: 'سكني', commercial: 'تجاري', industrial: 'صناعي', land: 'أرض' };
+
+function normalizeDbProperty(p) {
+  return {
+    id:           p.id,
+    title:        p.title        || '',
+    city:         p.city         || p.province || '',
+    district:     p.province     || '',
+    type:         DETAIL_TYPE_MAP[p.property_type] || 'سكني',
+    status:       p.listing_type === 'rent' ? 'للإيجار' : 'للبيع',
+    currency:     'USD',
+    price:        p.price_estimate || p.rent_price || 0,
+    priceDisplay: p.listing_type === 'rent'
+      ? (p.rent_price     ? `$${Number(p.rent_price).toLocaleString()}/شهر` : '—')
+      : (p.price_estimate ? `$${Number(p.price_estimate).toLocaleString()}`  : '—'),
+    area:         p.area         || 0,
+    rooms:        p.bedrooms     || 0,
+    baths:        p.bathrooms    || 0,
+    floor:        p.floor        || 0,
+    lat:          p.lat,
+    lng:          p.lng,
+    images:       Array.isArray(p.images) ? p.images : [],
+    tags:         p.amenities    || [],
+    verified:     p.verified     || false,
+    description:  p.description  || '',
+    ownerName:    'مالك خاص',
+    owner_id:     p.owner_id,
+    rating:       0,
+    fromSupabase: true,
+  };
+}
+
 export default function PropertyDetailPage() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const { properties, updatePropertyStatus } = useGlobalData();
   const { user } = useAuth();
-  const property = properties.find((p) => String(p.id) === id);
-  const isOwner  = !!(user?.full_name && property && user.full_name === property.ownerName);
+
+  // Direct Supabase fetch when the property isn't in GlobalContext yet
+  const [dbProperty, setDbProperty] = useState(null);
+  const [dbLoading,  setDbLoading]  = useState(false);
+
+  const property = useMemo(() => {
+    const found = properties.find((p) => String(p.id) === id);
+    if (found) return found;
+    return dbProperty ? normalizeDbProperty(dbProperty) : null;
+  }, [properties, dbProperty, id]);
+
+  useEffect(() => {
+    const inContext = properties.some((p) => String(p.id) === id);
+    if (inContext || !isConfigured) return;
+    setDbLoading(true);
+    supabase
+      .from('properties')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => { if (data) setDbProperty(data); })
+      .finally(() => setDbLoading(false));
+  }, [id, properties]);
+
+  const isOwner  = !!(user?.id && property && user.id === property.owner_id);
   const [ownerStatusDraft, setOwnerStatusDraft] = useState(property?.status ?? '');
   const [showReport, setShowReport] = useState(false);
 
@@ -1268,6 +1397,26 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (property) addRecentlyViewed(property);
   }, [property]);
+
+  // Record property view (once per session per property)
+  useEffect(() => {
+    if (!property || !isConfigured) return;
+    const sessionKey = `viewed-${property.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
+    supabase.from('property_views').insert({
+      property_id: String(property.id),
+      viewer_id: user?.id ?? null,
+    }).catch(() => {});
+  }, [property, user?.id]);
+
+  if (dbLoading) {
+    return (
+      <div className="min-h-screen bg-cream pt-16 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!property) {
     return (
@@ -1544,8 +1693,10 @@ export default function PropertyDetailPage() {
                   ))}
                 </div>
               </div>
-              <MapBox lat={property.lat} lng={property.lng} city={property.city} district={property.district} />
-              {property.lat && property.lng && (
+              {property.lat != null && property.lng != null && (
+                <MapBox lat={property.lat} lng={property.lng} city={property.city} district={property.district} />
+              )}
+              {property.lat != null && property.lng != null && (
                 <NeighborhoodScore lat={property.lat} lng={property.lng} />
               )}
             </motion.div>

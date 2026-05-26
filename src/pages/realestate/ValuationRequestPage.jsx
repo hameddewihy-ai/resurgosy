@@ -8,8 +8,12 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { sendAdminAlert } from '../../utils/emailService';
 import SEO from '../../components/SEO';
 import EscrowCheckoutModal from '../../components/wallet/EscrowCheckoutModal';
+import SyriaLocationSelector from '../../components/ui/SyriaLocationSelector';
+import { supabase, isConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const TIERS = [
@@ -74,11 +78,6 @@ const PROPERTY_TYPES = [
   { value: 'mixed',        label: 'مختلط (سكني+تجاري)', icon: Building2 },
 ];
 
-const GOVERNORATES = [
-  'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية',
-  'طرطوس', 'إدلب', 'دير الزور', 'الرقة', 'الحسكة',
-  'السويداء', 'درعا', 'القنيطرة',
-];
 
 const FLOORS = [
   { value: 'ground', label: 'أرضي' },
@@ -160,6 +159,7 @@ function PropertyTypeSelector({ value, onChange }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ValuationRequestPage() {
+  const { user } = useAuth();
   const [step, setStep]       = useState(1);
   const [tier, setTier]       = useState('field');
   const [submitted, setSubmitted] = useState(false);
@@ -171,7 +171,8 @@ export default function ValuationRequestPage() {
     propType: 'apartment',
     area: '',
     governorate: 'دمشق',
-    district: '',
+    city: '',
+    neighborhood: '',
     address: '',
     floor: 'mid',
     age: '',
@@ -206,6 +207,34 @@ export default function ValuationRequestPage() {
     toast.success('تم استلام طلبك وحجز المبلغ بنجاح!', { duration: 4000 });
     setIsCheckoutOpen(false);
     setSubmitted(true);
+
+    // Save to Supabase
+    if (isConfigured) {
+      supabase.from('valuation_requests').insert({
+        user_id:       user?.id || null,
+        client_name:   form.name,
+        client_phone:  form.phone,
+        client_email:  form.email || null,
+        property_type: form.propType,
+        tier,
+        province:      form.governorate,
+        city:          form.city || null,
+        district:      form.neighborhood || null,
+        area:          form.area ? parseFloat(form.area) : null,
+        floor:         form.floor || null,
+        address:       form.address || null,
+        purpose:       form.purpose || null,
+        notes:         form.notes || null,
+        status:        'pending',
+      }).catch(() => {});
+    }
+
+    sendAdminAlert('admin@resurgo.com', 'طلب تقييم عقاري جديد', {
+      CustomerName: form.name,
+      CustomerPhone: form.phone,
+      Tier: activeTier.title,
+      Location: form.governorate + ' - ' + form.city,
+    }).catch(() => {});
   };
 
   // ── Success Page ──
@@ -232,7 +261,7 @@ export default function ValuationRequestPage() {
             {[
               ['الباقة', activeTier.title + ' — $' + activeTier.price],
               ['العقار', PROPERTY_TYPES.find(t => t.value === form.propType)?.label],
-              ['الموقع', form.governorate + (form.district ? ' — ' + form.district : '')],
+              ['الموقع', [form.governorate, form.city, form.neighborhood].filter(Boolean).join(' — ')],
               ['المساحة', form.area + ' م²'],
               ['الغرض', PURPOSES.find(p => p.value === form.purpose)?.label],
               ['التسليم', activeTier.delivery],
@@ -371,16 +400,12 @@ export default function ValuationRequestPage() {
                               type="number" min="0" placeholder="مثال: 15"
                               className="input-field text-sm w-full" />
                           </div>
-                          <div>
-                            <label className="text-charcoal/60 text-xs mb-1 block">المحافظة *</label>
-                            <select value={form.governorate} onChange={e => set('governorate', e.target.value)} className="input-field text-sm w-full">
-                              {GOVERNORATES.map(g => <option key={g}>{g}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-charcoal/60 text-xs mb-1 block">المنطقة / الحي</label>
-                            <input value={form.district} onChange={e => set('district', e.target.value)}
-                              placeholder="المزة، فيلات شرقية..." className="input-field text-sm w-full" />
+                          <div className="sm:col-span-2">
+                            <SyriaLocationSelector
+                              required
+                              value={{ governorate: form.governorate, city: form.city, neighborhood: form.neighborhood }}
+                              onChange={loc => setForm(p => ({ ...p, governorate: loc.governorate, city: loc.city, neighborhood: loc.neighborhood }))}
+                            />
                           </div>
                           <div className="sm:col-span-2">
                             <label className="text-charcoal/60 text-xs mb-1 block">العنوان التفصيلي *</label>

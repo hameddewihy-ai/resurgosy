@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGlobalData } from '../../context/GlobalContext';
 import SEO from '../../components/SEO';
 import toast from 'react-hot-toast';
+import { sendAdminAlert } from '../../utils/emailService';
 import HandoverProtocolModal from '../../components/contracts/HandoverProtocolModal';
 
 // ── Type icon map ────────────────────────────────────────────────────────────
@@ -135,6 +136,14 @@ function WithdrawModal({ isOpen, onClose, onWithdraw, availableBalance }) {
 
     onWithdraw(num, method.title, details);
     toast.success(`تم تقديم طلب سحب بقيمة $${num.toLocaleString()} بنجاح ✅`);
+    
+    // إرسال إيميل للإدارة
+    sendAdminAlert('admin@resurgo.com', 'طلب سحب أموال جديد', {
+      Amount: num + ' USD',
+      Method: method.title,
+      Details: details
+    }).catch(() => {});
+
     setAmount('');
     setMethod(null);
     setDetails({});
