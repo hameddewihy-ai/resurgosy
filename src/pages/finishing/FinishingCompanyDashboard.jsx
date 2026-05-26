@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -138,7 +138,7 @@ export default function FinishingCompanyDashboard() {
     });
     toast.success('تم إرسال عرض السعر بنجاح إلى العميل!');
     
-    sendAdminAlert('admin@resurgo.com', 'عرض سعر إكساء جديد', {
+    sendAdminAlert('hameddewihy@gmail.com', 'عرض سعر إكساء جديد', {
       Company: companyName,
       Price: bidPrice + ' USD',
       Duration: bidDuration + ' أسابيع',

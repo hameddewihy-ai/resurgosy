@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Building2, MapPin, DollarSign, CheckCircle, Home, HardHat } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -357,7 +357,7 @@ export default function AddPropertyPage() {
         if (error) throw error;
 
         // Notify admin
-        sendAdminAlert('admin@resurgo.com', 'عقار جديد للمراجعة', {
+        sendAdminAlert('hameddewihy@gmail.com', 'عقار جديد للمراجعة', {
           Title:    form.title,
           Province: form.province,
           Owner:    user.email,

@@ -1,4 +1,4 @@
-import { useGlobalData } from '../context/GlobalContext';
+﻿import { useGlobalData } from '../context/GlobalContext';
 import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -403,7 +403,7 @@ function JobDetail({ job, onClose, onApplied, jobs, onSelectSimilar }) {
             toast.success('تم إرسال طلبك بنجاح!');
             
             // إرسال إيميل للإدارة
-            sendAdminAlert('admin@resurgo.com', 'تقديم على وظيفة جديدة', {
+            sendAdminAlert('hameddewihy@gmail.com', 'تقديم على وظيفة جديدة', {
               JobTitle: job.title,
               Company: job.company,
               City: job.city

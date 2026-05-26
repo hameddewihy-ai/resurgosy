@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -50,7 +50,7 @@ function AddProjectModal({ onClose, onAdd }) {
     };
     onAdd(newProject);
     toast.success('تم إضافة المشروع بنجاح ✓');
-    sendAdminAlert('admin@resurgo.com', 'مشروع عقاري جديد', { Project: form.name, City: form.city, Units: form.totalUnits }).catch(() => {});
+    sendAdminAlert('hameddewihy@gmail.com', 'مشروع عقاري جديد', { Project: form.name, City: form.city, Units: form.totalUnits }).catch(() => {});
     setSaving(false);
     onClose();
   };
@@ -577,7 +577,7 @@ function TendersTab() {
     addTender({ title: 'أعمال الديكورات الجبسية', type: 'إكساء وتشطيب', deadline: '2026-06-15', bidsCount: 0, status: 'مفتوح', developerId: 1 });
     toast.success('تم إضافة المناقصة بنجاح وانعكس ذلك في النظام المركزي');
     
-    sendAdminAlert('admin@resurgo.com', 'طرح مناقصة جديدة', {
+    sendAdminAlert('hameddewihy@gmail.com', 'طرح مناقصة جديدة', {
       Title: 'أعمال الديكورات الجبسية',
       Type: 'إكساء وتشطيب',
       Deadline: '2026-06-15',

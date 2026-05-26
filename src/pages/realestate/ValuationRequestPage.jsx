@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileSearch, CheckCircle, MapPin, Calculator, ShieldCheck,
@@ -229,7 +229,7 @@ export default function ValuationRequestPage() {
       }).catch(() => {});
     }
 
-    sendAdminAlert('admin@resurgo.com', 'طلب تقييم عقاري جديد', {
+    sendAdminAlert('hameddewihy@gmail.com', 'طلب تقييم عقاري جديد', {
       CustomerName: form.name,
       CustomerPhone: form.phone,
       Tier: activeTier.title,

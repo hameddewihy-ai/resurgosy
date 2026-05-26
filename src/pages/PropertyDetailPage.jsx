@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+﻿import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -912,7 +912,7 @@ function ContactCard({ property }) {
     setApptBooked(true);
     
     // إرسال إيميل للإدارة
-    sendAdminAlert('admin@resurgo.com', 'طلب حجز معاينة جديد', {
+    sendAdminAlert('hameddewihy@gmail.com', 'طلب حجز معاينة جديد', {
       PropertyTitle: property.title,
       Date: selDay.toLocaleDateString('ar-SY'),
       Time: selTime
@@ -983,7 +983,7 @@ function ContactCard({ property }) {
         );
       }
       // إشعار إيميل للإدارة
-      sendAdminAlert('admin@resurgo.com', 'استفسار جديد عن عقار', {
+      sendAdminAlert('hameddewihy@gmail.com', 'استفسار جديد عن عقار', {
         PropertyTitle: property.title,
         SenderName: user?.full_name || 'زائر',
         SenderPhone: user?.phone || '',

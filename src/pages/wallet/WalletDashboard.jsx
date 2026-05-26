@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -138,7 +138,7 @@ function WithdrawModal({ isOpen, onClose, onWithdraw, availableBalance }) {
     toast.success(`تم تقديم طلب سحب بقيمة $${num.toLocaleString()} بنجاح ✅`);
     
     // إرسال إيميل للإدارة
-    sendAdminAlert('admin@resurgo.com', 'طلب سحب أموال جديد', {
+    sendAdminAlert('hameddewihy@gmail.com', 'طلب سحب أموال جديد', {
       Amount: num + ' USD',
       Method: method.title,
       Details: details

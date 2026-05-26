@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isConfigured } from '../../lib/supabase';
@@ -189,7 +189,7 @@ export default function ContractorDashboard() {
 
         // إرسال إشعار للإدارة
         sendAdminAlert(
-          'admin@resurgo.com',
+          'hameddewihy@gmail.com',
           'إضافة معدة جديدة',
           { Contractor: user.full_name || 'مقاول', Equipment: form.name, Location: form.location }
         ).catch(() => {});
@@ -231,7 +231,7 @@ export default function ContractorDashboard() {
 
     // إرسال إشعار للإدارة
     sendAdminAlert(
-      'admin@resurgo.com',
+      'hameddewihy@gmail.com',
       'إضافة معدة جديدة (محلي)',
       { Contractor: user?.full_name || 'مقاول', Equipment: form.name, Location: form.location }
     ).catch(() => {});
