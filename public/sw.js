@@ -1,63 +1,59 @@
-const CACHE_NAME = 'resurgo-cache-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.ico'
-];
+const CACHE = 'resurgo-v2';
+const OFFLINE_URL = '/offline.html';
+const PRECACHE = ['/', '/offline.html', '/manifest.json', '/favicon.ico', '/logo192.png'];
 
-// Install Event
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+// Install: precache shell + offline page
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(PRECACHE))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// Activate Event
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+// Activate: evict old caches
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (e) => {
+  const { request } = e;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+
+  // Navigation: network-first, offline.html fallback
+  if (request.mode === 'navigate') {
+    e.respondWith(
+      fetch(request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(request, clone));
+          return res;
         })
-      );
-    })
-  );
-  self.clients.claim();
-});
+        .catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
 
-// Fetch Event - Stale While Revalidate strategy
-self.addEventListener('fetch', event => {
-  // Only intercept GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Don't intercept API calls or external domains if needed, but for now we cache local assets
-  if (!event.request.url.startsWith(self.location.origin)) return;
-
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        const fetchPromise = fetch(event.request).then(networkResponse => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
+  // Static assets: cache-first
+  if (/\.(js|css|png|jpg|jpeg|webp|svg|ico|woff2?)(\?|$)/.test(url.pathname)) {
+    e.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(request, clone));
           }
-          return networkResponse;
-        }).catch(() => {
-          // If offline and not in cache, we could return a custom offline page here
+          return res;
         });
-
-        // Return cached response immediately if available, otherwise wait for network
-        return cachedResponse || fetchPromise;
       })
-  );
+    );
+  }
 });
