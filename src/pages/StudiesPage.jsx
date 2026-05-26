@@ -1041,6 +1041,130 @@ function StudyCard({ study, index, onSelect }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Expert Application Modal ──────────────────────────────────────────────────
+const CREDENTIALS = ['MRICS','IVS','LEED','UNOPS','PMP','PE','أخرى'];
+const SPECIALTIES = ['تقييم عقاري','دراسات جدوى','هندسة إنشائية','تخطيط عمراني','استشارات بيئية','هندسة معمارية'];
+const PROVINCES = ['دمشق','ريف دمشق','حلب','حمص','حماة','اللاذقية','طرطوس','إدلب','دير الزور','الرقة','الحسكة','السويداء','درعا','القنيطرة'];
+
+function ExpertApplyModal({ onClose }) {
+  const [form, setForm] = useState({
+    name: '', specialty: SPECIALTIES[0], credentials: [], city: 'دمشق',
+    years: '', phone: '', email: '', bio: '',
+  });
+  const [submitted, setSubmitted] = useState(false);
+
+  const toggleCred = (c) =>
+    setForm(f => ({ ...f, credentials: f.credentials.includes(c) ? f.credentials.filter(x => x !== c) : [...f.credentials, c] }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.email) { toast.error('يرجى تعبئة الاسم والبريد والهاتف'); return; }
+    setSubmitted(true);
+    toast.success('تم استلام طلبك — سيتواصل معك فريق RESURGO خلال 48 ساعة');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" dir="rtl">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-navy/10 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-navy/8 shrink-0">
+          <div>
+            <p className="text-navy font-black text-base">الانضمام لشبكة خبراء RESURGO</p>
+            <p className="text-charcoal/50 text-xs mt-0.5">ابنِ محفظة مشاريع دولية مع أكبر منصة عقارية سورية</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-cream flex items-center justify-center text-charcoal/40 hover:text-navy transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {submitted ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+            <CheckCircle size={52} className="text-green-500 mb-4" />
+            <p className="text-navy font-black text-lg mb-2">تم استلام طلبك!</p>
+            <p className="text-charcoal/60 text-sm mb-6">سيراجع فريقنا ملفك ويتواصل معك على {form.email} خلال 48 ساعة.</p>
+            <button onClick={onClose} className="bg-brand text-white px-8 py-2.5 rounded-xl font-bold text-sm">إغلاق</button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-y-auto flex-1 p-5">
+              <form id="expert-apply-form" onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-charcoal/60 block mb-1">الاسم الكامل *</label>
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required
+                    placeholder="م. أحمد الخطيب"
+                    className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-charcoal/60 block mb-1">التخصص</label>
+                    <select value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
+                      className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand">
+                      {SPECIALTIES.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-charcoal/60 block mb-1">المدينة</label>
+                    <select value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                      className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand">
+                      {PROVINCES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-charcoal/60 block mb-1.5">الشهادات والاعتمادات</label>
+                  <div className="flex flex-wrap gap-2">
+                    {CREDENTIALS.map(c => (
+                      <button key={c} type="button" onClick={() => toggleCred(c)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${form.credentials.includes(c) ? 'bg-brand text-white border-brand' : 'border-navy/15 text-charcoal/60 hover:border-brand/40'}`}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-charcoal/60 block mb-1">سنوات الخبرة</label>
+                  <input type="number" min="1" max="50" value={form.years} onChange={e => setForm(f => ({ ...f, years: e.target.value }))}
+                    placeholder="10"
+                    className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-charcoal/60 block mb-1">رقم الهاتف *</label>
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} required
+                      placeholder="+963 9XX XXX XXX" dir="ltr"
+                      className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-charcoal/60 block mb-1">البريد الإلكتروني *</label>
+                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required
+                      placeholder="expert@email.com" dir="ltr"
+                      className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-charcoal/60 block mb-1">نبذة مختصرة</label>
+                  <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                    rows={3} placeholder="اكتب نبذة عن خبرتك وأبرز مشاريعك..."
+                    className="w-full border border-navy/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand resize-none" />
+                </div>
+              </form>
+            </div>
+            <div className="flex gap-2 p-5 border-t border-navy/8 shrink-0">
+              <button form="expert-apply-form" type="submit"
+                className="flex-1 bg-brand hover:bg-brand/90 text-white font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                <Send size={14} /> إرسال الطلب
+              </button>
+              <button onClick={onClose} className="px-4 border border-navy/15 text-charcoal/60 rounded-xl text-sm hover:text-navy transition-colors">إلغاء</button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function StudiesPage() {
   const [pageTab, setPageTab]     = useState('catalog');
   const [cat, setCat]             = useState('all');
@@ -1048,6 +1172,7 @@ export default function StudiesPage() {
   const [cityFilter, setCityFilter] = useState('all');
   const [priceFilter, setPriceFilter] = useState('all');
   const [selectedStudy, setSelectedStudy] = useState(null);
+  const [showExpertApply, setShowExpertApply] = useState(false);
 
   const cities = ['all', ...Array.from(new Set(STUDIES.map(s => s.city)))];
 
@@ -1369,7 +1494,7 @@ export default function StudiesPage() {
             <div className="bg-white p-6 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
               <p className="text-navy font-bold text-base mb-2">هل أنت خبير عقاري أو هندسي؟</p>
               <p className="text-charcoal/60 text-sm mb-4">انضم لشبكة RESURGO وابنِ محفظة مشاريع دولية</p>
-              <button onClick={() => toast('سيُفتح باب التسجيل قريباً')}
+              <button onClick={() => setShowExpertApply(true)}
                 className="btn-cta px-8 flex items-center justify-center gap-2 mx-auto">
                 <ExternalLink size={14} /> تقدم للانضمام
               </button>
@@ -1403,6 +1528,13 @@ export default function StudiesPage() {
       <AnimatePresence>
         {selectedStudy && (
           <StudyDetailDrawer study={selectedStudy} onClose={() => setSelectedStudy(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Expert Apply Modal */}
+      <AnimatePresence>
+        {showExpertApply && (
+          <ExpertApplyModal onClose={() => setShowExpertApply(false)} />
         )}
       </AnimatePresence>
     </div>
