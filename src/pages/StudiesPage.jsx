@@ -12,6 +12,7 @@ import {
   FileText, Zap, Globe, Home,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase, isConfigured } from '../lib/supabase';
 import PageHero from '../components/PageHero';
 import SEO from '../components/SEO';
 
@@ -1056,9 +1057,22 @@ function ExpertApplyModal({ onClose }) {
   const toggleCred = (c) =>
     setForm(f => ({ ...f, credentials: f.credentials.includes(c) ? f.credentials.filter(x => x !== c) : [...f.credentials, c] }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.email) { toast.error('يرجى تعبئة الاسم والبريد والهاتف'); return; }
+    if (isConfigured) {
+      const { error } = await supabase.from('expert_applications').insert({
+        name:        form.name.trim(),
+        specialty:   form.specialty,
+        credentials: form.credentials,
+        city:        form.city,
+        years:       form.years ? Number(form.years) : null,
+        phone:       form.phone.trim(),
+        email:       form.email.trim(),
+        bio:         form.bio.trim() || null,
+      });
+      if (error) { toast.error('حدث خطأ أثناء الإرسال، حاول مرة أخرى'); return; }
+    }
     setSubmitted(true);
     toast.success('تم استلام طلبك — سيتواصل معك فريق RESURGO خلال 48 ساعة');
   };
