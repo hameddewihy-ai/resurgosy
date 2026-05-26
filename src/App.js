@@ -130,7 +130,7 @@ function AppContent() {
               <Route path="/finishing/companies/:id" element={<FinishingCompanyProfilePage />} />
               <Route path="/finishing/gallery"       element={<FinishingGalleryPage />} />
               <Route path="/finishing/prices"        element={<FinishingPricesPage />} />
-              <Route path="/finishing/expat"            element={<PrivateRoute><ExpatDashboardPage /></PrivateRoute>} />
+              <Route path="/finishing/expat"            element={<PrivateRoute roles={['finishing_co','admin']}><ExpatDashboardPage /></PrivateRoute>} />
               <Route path="/finishing/company-dashboard" element={<PrivateRoute roles={['finishing_co','admin']}><FinishingCompanyDashboard /></PrivateRoute>} />
               <Route path="/developers"            element={<DevelopersPage />} />
               <Route path="/crowdfund"             element={<CrowdfundPage />} />

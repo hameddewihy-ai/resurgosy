@@ -178,35 +178,28 @@ function AssessmentSession({ req, onIssue }) {
   const handleIssue = () => {
     if (!notes.trim()) { toast.error('أضف ملاحظات التقييم الميداني قبل الإصدار'); return; }
     setSubmitting(true);
-    setTimeout(() => {
-      const report = {
-        id: `RPT-${Date.now()}`,
-        requestId: req.id,
-        clientName: req.clientName,
-        city: req.city,
-        district: req.district,
-        area: req.area,
-        propertyType: req.propertyType,
-        baselineValue: baseline.mid,
-        adjustments: { ...vals, totalPct },
-        finalValue: finalMid,
-        finalLow,
-        finalHigh,
-        currency,
-        notes: notes.trim(),
-        tier: req.tier,
-        issuedAt: new Date().toISOString().split('T')[0],
-        status: 'certified',
-      };
-      try {
-        const all = JSON.parse(localStorage.getItem(REPORT_KEY) || '[]');
-        all.unshift(report);
-        localStorage.setItem(REPORT_KEY, JSON.stringify(all.slice(0, 200)));
-      } catch { /* silent */ }
-      toast.success('تم إصدار تقرير التقييم بنجاح ✅');
-      setSubmitting(false);
-      onIssue(report);
-    }, 900);
+    const report = {
+      id: `RPT-${Date.now()}`,
+      requestId: req.id,
+      clientName: req.clientName,
+      city: req.city,
+      district: req.district,
+      area: req.area,
+      propertyType: req.propertyType,
+      baselineValue: baseline.mid,
+      adjustments: { ...vals, totalPct },
+      finalValue: finalMid,
+      finalLow,
+      finalHigh,
+      currency,
+      notes: notes.trim(),
+      tier: req.tier,
+      issuedAt: new Date().toISOString().split('T')[0],
+      status: 'certified',
+    };
+    toast.success('تم إصدار تقرير التقييم بنجاح ✅');
+    setSubmitting(false);
+    onIssue(report);
   };
 
   return (

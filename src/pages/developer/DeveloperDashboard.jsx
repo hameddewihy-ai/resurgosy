@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,6 +11,8 @@ import SEO from '../../components/SEO';
 import toast from 'react-hot-toast';
 import { sendAdminAlert } from '../../utils/emailService';
 import { useGlobalData } from '../../context/GlobalContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase, isConfigured } from '../../lib/supabase';
 import GanttChart from '../../components/developer/GanttChart';
 import LeadScorePanel, { computeLeadScore, getScoreTier } from '../../components/developer/LeadScorePanel';
 
@@ -25,29 +27,38 @@ const TIER_BADGE = {
 const CITIES = ['دمشق','ريف دمشق','حلب','حمص','حماة','اللاذقية','طرطوس','إدلب','دير الزور','الرقة','الحسكة','السويداء','درعا','القنيطرة'];
 const PROJECT_TYPES = ['سكني','تجاري','صناعي','مختلط'];
 
-function AddProjectModal({ onClose, onAdd }) {
+function AddProjectModal({ onClose, onAdd, userId }) {
   const [form, setForm] = useState({
     name: '', city: 'دمشق', type: 'سكني', totalUnits: '', startDate: '', nextMilestone: '', description: '',
   });
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.totalUnits) { toast.error('يرجى تعبئة اسم المشروع وعدد الوحدات'); return; }
     setSaving(true);
-    const newProject = {
-      id: Date.now(),
-      developerId: 1,
-      name: form.name,
-      city: form.city,
-      type: form.type,
-      totalUnits: parseInt(form.totalUnits),
-      sold: 0,
-      progress: 0,
-      nextMilestone: form.nextMilestone || 'بدء الأعمال',
-      description: form.description,
-      startDate: form.startDate,
+
+    const payload = {
+      developer_id:   userId || null,
+      name:           form.name.trim(),
+      city:           form.city,
+      type:           form.type,
+      total_units:    parseInt(form.totalUnits),
+      start_date:     form.startDate || null,
+      next_milestone: form.nextMilestone || 'بدء الأعمال',
+      description:    form.description.trim() || null,
     };
+
+    let newProject = { id: Date.now(), developerId: 1, name: payload.name, city: payload.city,
+      type: payload.type, totalUnits: payload.total_units, sold: 0, progress: 0,
+      nextMilestone: payload.next_milestone, description: payload.description, startDate: payload.start_date };
+
+    if (isConfigured) {
+      const { data, error } = await supabase.from('developer_projects').insert(payload).select().single();
+      if (error) { toast.error('حدث خطأ أثناء الحفظ'); setSaving(false); return; }
+      if (data) newProject = { ...newProject, id: data.id };
+    }
+
     onAdd(newProject);
     toast.success('تم إضافة المشروع بنجاح ✓');
     sendAdminAlert('hameddewihy@gmail.com', 'مشروع عقاري جديد', { Project: form.name, City: form.city, Units: form.totalUnits }).catch(() => {});
@@ -134,9 +145,37 @@ function AddProjectModal({ onClose, onAdd }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DeveloperDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('crm');
   const [showAddProject, setShowAddProject] = useState(false);
   const [extraProjects, setExtraProjects] = useState([]);
+
+  // Load developer's own projects from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('developer_projects')
+      .select('*')
+      .eq('developer_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setExtraProjects(data.map(p => ({
+            id:            p.id,
+            developerId:   1,
+            name:          p.name,
+            city:          p.city,
+            type:          p.type,
+            totalUnits:    p.total_units,
+            sold:          p.sold_units || 0,
+            progress:      p.progress || 0,
+            nextMilestone: p.next_milestone || 'بدء الأعمال',
+            description:   p.description,
+            startDate:     p.start_date,
+          })));
+        }
+      });
+  }, [user]);
 
   const TABS = [
     { id: 'crm',      label: 'إدارة العملاء (CRM)',         icon: Users },
@@ -204,6 +243,7 @@ export default function DeveloperDashboard() {
           <AddProjectModal
             onClose={() => setShowAddProject(false)}
             onAdd={(p) => setExtraProjects(prev => [p, ...prev])}
+            userId={user?.id}
           />
         )}
       </AnimatePresence>

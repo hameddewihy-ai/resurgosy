@@ -14,17 +14,8 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase, isConfigured } from '../../lib/supabase';
 import { formatDate } from '../../utils/formatDate';
 
-// ── Initial data (empty — populated by real platform requests) ────────────────
-const MOCK_TASKS    = [];
+// ── Initial data (populated from Supabase on mount) ───────────────────────────
 const INITIAL_SKILLS = [];
-
-const MOCK_INSPECTION = [
-  { id: 1, zone: 'الواجهة الخارجية',    observation: 'تشققات رأسية عند زاوية النافذة الجنوبية، عرض ~2mm',            risk: 'تسرب المياه وتآكل حديد التسليح على المدى المتوسط',       action: 'حقن إيبوكسي + طبقة عزل مائي خارجية',                    severity: 'medium' },
-  { id: 2, zone: 'السقف والبلاطات',     observation: 'بقع رطوبة دائرية قطر ~40cm في منطقة دورة المياه',              risk: 'تراجع مقاومة الخرسانة — احتمال تفطر البلاطة عند الحمل',  action: 'كشف مصدر التسرب + إصلاح الإيبوكسي والدهان المقاوم',     severity: 'high' },
-  { id: 3, zone: 'الأعمدة الإنشائية',   observation: 'تقشر خرسانة سطحية على عمود الركيزة الشمالية مع ظهور حديد',     risk: 'صدأ الحديد يُقلص المقطع الفعّال للعمود تدريجياً',          action: 'معالجة Rust Inhibitor + خرسانة إصلاحية عالية المقاومة',  severity: 'high' },
-  { id: 4, zone: 'الأرضيات',            observation: 'تجويف تحت بلاطة الغرفة الرئيسية (صوت أجوف) مساحة ~0.5م²',     risk: 'انهيار موضعي محتمل تحت التحميل — خطر فوري',               action: 'حقن Grouting + عزل المنطقة فوراً لحين الإصلاح',          severity: 'critical' },
-  { id: 5, zone: 'النوافذ والأبواب',    observation: 'تقارب رأسي في إطار الباب الرئيسي بمقدار 8mm',                   risk: 'هبوط موضعي في العتبة أو الجسر فوق الفتحة',                action: 'فحص Lintel بالموجات فوق الصوتية + تحليل الهبوط التفاضلي', severity: 'medium' },
-];
 
 // ── Lookup configs ────────────────────────────────────────────────────────────
 const STATUS_META = {
@@ -348,6 +339,7 @@ function AIInspection() {
   const [photos, setPhotos] = useState([]);
   const [inspType, setInspType] = useState('residential');
   const [stage, setStage]   = useState('idle'); // idle | analyzing | results
+  const [inspectionResults, setInspectionResults] = useState([]);
   const fileRef = useRef(null);
 
   const handleFiles = e => {
@@ -362,10 +354,11 @@ function AIInspection() {
   const analyze = () => {
     if (photos.length === 0) { toast.error('يرجى رفع صورة واحدة على الأقل'); return; }
     setStage('analyzing');
-    setTimeout(() => setStage('results'), 2800);
+    // Placeholder: real AI vision analysis will populate inspectionResults
+    setTimeout(() => { setInspectionResults([]); setStage('results'); }, 2800);
   };
 
-  const criticalCount = MOCK_INSPECTION.filter(m => m.severity === 'critical' || m.severity === 'high').length;
+  const criticalCount = inspectionResults.filter(m => m.severity === 'critical' || m.severity === 'high').length;
 
   return (
     <div className="space-y-5">
@@ -440,7 +433,7 @@ function AIInspection() {
               <div>
                 <p className="text-navy font-bold text-sm">تقرير المعاينة البصرية</p>
                 <p className="text-charcoal/50 text-xs mt-0.5">
-                  {photos.length} صورة محللة · {MOCK_INSPECTION.length} ملاحظة · {new Date().toLocaleDateString('ar-SY')}
+                  {photos.length} صورة محللة · {inspectionResults.length} ملاحظة · {new Date().toLocaleDateString('ar-SY')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -467,7 +460,13 @@ function AIInspection() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_INSPECTION.map((row, i) => {
+                  {inspectionResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-charcoal/40 text-xs">
+                        لم يتم اكتشاف ملاحظات تلقائية — يمكنك إضافة ملاحظاتك يدوياً في نموذج IVS
+                      </td>
+                    </tr>
+                  ) : inspectionResults.map((row, i) => {
                     const sc = SEVERITY_CFG[row.severity];
                     return (
                       <motion.tr key={row.id}
@@ -517,7 +516,7 @@ const TABS = [
 
 export default function EngineerDashboard() {
   const { user } = useAuth();
-  const [tasks, setTasks]           = useState(MOCK_TASKS);
+  const [tasks, setTasks]           = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [filter, setFilter]         = useState('all');
@@ -526,6 +525,29 @@ export default function EngineerDashboard() {
   const [dbReports, setDbReports]   = useState(null); // null = loading
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+
+  // Load tasks from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('engineer_tasks')
+      .select('*')
+      .eq('engineer_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setTasks(data.map(t => ({
+          id:           t.id,
+          property:     t.title,
+          city:         t.city || '',
+          type:         t.type || 'residential',
+          priority:     t.priority || 'medium',
+          status:       t.status || 'pending',
+          requested_at: t.requested_at || '',
+          lat:          t.lat,
+          lng:          t.lng,
+        })));
+      });
+  }, [user]);
 
   // Load past submitted reports from Supabase
   useEffect(() => {

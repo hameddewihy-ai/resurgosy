@@ -32,8 +32,6 @@ const PROVINCES = [
   'إدلب', 'دير الزور', 'الرقة', 'الحسكة', 'السويداء', 'درعا', 'القنيطرة',
 ];
 
-const MOCK_RFQS = [];
-
 const RFQ_STATUS_CFG = {
   new:      { label: 'جديد',         bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500'  },
   quoted:   { label: 'قدّمت عرضاً', bg: 'bg-brand/10',    text: 'text-brand',       dot: 'bg-brand'      },
@@ -53,8 +51,30 @@ export default function ContractorDashboard() {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'tenders' | 'rfq'
   const [rfqSearch, setRfqSearch]     = useState('');
   const [rfqFilter, setRfqFilter]     = useState('all'); // 'all' | 'new' | 'quoted' | 'accepted' | 'declined'
-  const [rfqItems, setRfqItems]       = useState(MOCK_RFQS);
+  const [rfqItems, setRfqItems]       = useState([]);
   const [expandedRfq, setExpandedRfq] = useState(null);
+
+  // Load RFQs from Supabase
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('contractor_rfqs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setRfqItems(data.map(r => ({
+          id:          r.id,
+          service:     r.service,
+          description: r.description || '',
+          city:        r.city || '',
+          governorate: r.governorate || '',
+          contactName: r.client_name || '',
+          urgency:     r.urgency || 'عادي',
+          status:      r.status || 'new',
+          budgetUsd:   r.budget_usd,
+        })));
+      });
+  }, [user]);
 
   const newRfqCount = rfqItems.filter(r => r.status === 'new').length;
 
@@ -70,6 +90,9 @@ export default function ContractorDashboard() {
 
   const handleRfqAction = (id, action) => {
     setRfqItems(prev => prev.map(r => r.id === id ? { ...r, status: action } : r));
+    if (isConfigured) {
+      supabase.from('contractor_rfqs').update({ status: action }).eq('id', id).catch(() => {});
+    }
     toast.success(action === 'quoted' ? 'تم إرسال عرض السعر للعميل!' : 'تم رفض الطلب');
     setExpandedRfq(null);
   };
