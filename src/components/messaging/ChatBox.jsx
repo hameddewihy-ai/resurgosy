@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase, isConfigured } from "../../lib/supabaseClient";
+import { supabase, isConfigured } from "../../lib/supabase";
 import { Send, X } from "lucide-react";
 
 export default function ChatBox({ conversationId, currentUserId, otherName, onClose }) {

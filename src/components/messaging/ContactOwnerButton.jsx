@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { MessageCircle, X } from "lucide-react";
-import { supabase, isConfigured } from "../../lib/supabaseClient";
+import { MessageCircle } from "lucide-react";
+import { supabase, isConfigured } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
 import ChatBox from "./ChatBox";
 
