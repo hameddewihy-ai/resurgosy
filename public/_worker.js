@@ -395,6 +395,11 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
+    // Proxy dynamic property sitemap to Supabase Edge Function
+    if (pathname === '/sitemap-properties.xml') {
+      return fetch('https://yjdyibeisprrzyozpqkd.supabase.co/functions/v1/generate-sitemap');
+    }
+
     // Serve pitch deck standalone HTML directly (bypasses SPA routing)
     if (pathname === '/pitch' || pathname.startsWith('/pitch/')) {
       const pitchUrl = `${SITE_URL}/pitch/index.html`;
