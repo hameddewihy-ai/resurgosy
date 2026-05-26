@@ -54,6 +54,96 @@ const TABS = [
 ];
 
 
+function MessagesTab({ user, inquiries }) {
+  const [conversations, setConversations] = useState([]);
+  const [activeConv, setActiveConv] = useState(null);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    supabase
+      .from('conversations')
+      .select('id, property_id, properties(title), buyer_id, owner_id')
+      .or(`buyer_id.eq.${user.id},owner_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setConversations(data || []));
+  }, [user]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {conversations.length > 0 && (
+        <div>
+          <p className="text-navy font-bold text-sm mb-3">المحادثات المباشرة</p>
+          <div className="grid gap-3">
+            {conversations.map(conv => {
+              const isMe = conv.buyer_id === user.id;
+              const otherLabel = isMe ? 'المالك' : 'المشتري';
+              const propTitle = conv.properties?.title || 'عقار';
+              return (
+                <div key={conv.id}
+                  onClick={() => setActiveConv(activeConv?.id === conv.id ? null : conv)}
+                  className="bg-white border border-navy/10 rounded-xl p-4 cursor-pointer hover:border-brand/40 transition-all">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-navy font-bold text-sm">{propTitle}</p>
+                      <p className="text-charcoal/50 text-xs mt-0.5">{otherLabel}</p>
+                    </div>
+                    <MessageCircle size={18} className="text-brand" />
+                  </div>
+                  {activeConv?.id === conv.id && (
+                    <div className="mt-3 h-72 bg-[#1f2a38] rounded-xl overflow-hidden">
+                      <ChatBox
+                        conversationId={conv.id}
+                        currentUserId={user.id}
+                        otherName={otherLabel}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-charcoal/60 text-xs mb-2">
+          <span className="text-navy font-bold">{inquiries.length}</span> استفسار مُرسَل
+        </p>
+        {inquiries.length === 0 ? (
+          <div className="bg-white p-10 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+            <MessageCircle size={36} className="mx-auto text-navy/20 mb-3" />
+            <p className="text-charcoal/50 text-sm">لم ترسل أي استفسار بعد</p>
+            <Link to="/properties" className="text-brand text-xs hover:underline mt-2 inline-block">
+              تصفّح العقارات وتواصل مع الملاك
+            </Link>
+          </div>
+        ) : (
+          inquiries.map((inq, i) => (
+            <motion.div key={inq.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
+              className="bg-white p-4 flex gap-4 shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] transition-all"
+              style={{ borderRadius: '8px' }}>
+              {inq.propertyImg && (
+                <img src={inq.propertyImg} alt="" className="w-16 h-14 rounded-xl object-cover shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-navy font-bold text-sm truncate">{inq.propertyTitle}</p>
+                <p className="text-charcoal/55 text-xs mt-0.5 truncate">إلى: {inq.ownerName}</p>
+                <p className="text-charcoal/60 text-xs mt-1.5 line-clamp-2 leading-relaxed">{inq.message}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                  {inq.status}
+                </span>
+                <p className="text-charcoal/35 text-[10px] mt-1.5">{inq.date}</p>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function StatCard({ icon: Icon, value, label, color }) {
   return (
     <div className="bg-white p-5 flex items-center gap-4 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
@@ -1148,99 +1238,10 @@ export default function DashboardPage() {
         )}
 
         {/* ── Messages ── */}
-        {tab === 'messages' && (() => {
-          const [conversations, setConversations] = useState([]);
-          const [activeConv, setActiveConv] = useState(null);
+        {tab === 'messages' && (
+          <MessagesTab user={user} inquiries={inquiries} />
+        )}
 
-          useEffect(() => {
-            if (!isConfigured || !user) return;
-            supabase
-              .from('conversations')
-              .select('id, property_id, properties(title), buyer_id, owner_id')
-              .or(`buyer_id.eq.${user.id},owner_id.eq.${user.id}`)
-              .order('created_at', { ascending: false })
-              .then(({ data }) => setConversations(data || []));
-          }, [user]);
-
-          return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-
-            {/* ── Conversations ── */}
-            {conversations.length > 0 && (
-              <div>
-                <p className="text-navy font-bold text-sm mb-3">المحادثات المباشرة</p>
-                <div className="grid gap-3">
-                  {conversations.map(conv => {
-                    const isMe = conv.buyer_id === user.id;
-                    const otherLabel = isMe ? 'المالك' : 'المشتري';
-                    const propTitle = conv.properties?.title || 'عقار';
-                    return (
-                      <div key={conv.id}
-                        onClick={() => setActiveConv(activeConv?.id === conv.id ? null : conv)}
-                        className="bg-white border border-navy/10 rounded-xl p-4 cursor-pointer hover:border-brand/40 transition-all">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-navy font-bold text-sm">{propTitle}</p>
-                            <p className="text-charcoal/50 text-xs mt-0.5">{otherLabel}</p>
-                          </div>
-                          <MessageCircle size={18} className="text-brand" />
-                        </div>
-                        {activeConv?.id === conv.id && (
-                          <div className="mt-3 h-72 bg-[#1f2a38] rounded-xl overflow-hidden">
-                            <ChatBox
-                              conversationId={conv.id}
-                              currentUserId={user.id}
-                              otherName={otherLabel}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Inquiries ── */}
-            <div>
-              <p className="text-charcoal/60 text-xs mb-2">
-                <span className="text-navy font-bold">{inquiries.length}</span> استفسار مُرسَل
-              </p>
-              {inquiries.length === 0 ? (
-                <div className="bg-white p-10 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-                  <MessageCircle size={36} className="mx-auto text-navy/20 mb-3" />
-                  <p className="text-charcoal/50 text-sm">لم ترسل أي استفسار بعد</p>
-                  <Link to="/properties" className="text-brand text-xs hover:underline mt-2 inline-block">
-                    تصفّح العقارات وتواصل مع الملاك
-                  </Link>
-                </div>
-              ) : (
-                inquiries.map((inq, i) => (
-                  <motion.div key={inq.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                    className="bg-white p-4 flex gap-4 shadow-[0_2px_8px_rgba(31,42,56,0.06)] hover:shadow-[0_8px_24px_rgba(31,42,56,0.10)] transition-all"
-                    style={{ borderRadius: '8px' }}>
-                    {inq.propertyImg && (
-                      <img src={inq.propertyImg} alt="" className="w-16 h-14 rounded-xl object-cover shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-navy font-bold text-sm truncate">{inq.propertyTitle}</p>
-                      <p className="text-charcoal/55 text-xs mt-0.5 truncate">إلى: {inq.ownerName}</p>
-                      <p className="text-charcoal/60 text-xs mt-1.5 line-clamp-2 leading-relaxed">{inq.message}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                        {inq.status}
-                      </span>
-                      <p className="text-charcoal/35 text-[10px] mt-1.5">{inq.date}</p>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-
-          </motion.div>
-          );
-        })()}
 
         {/* ── Owner Inbox (Received Inquiries) ── */}
         {tab === 'inbox' && (
