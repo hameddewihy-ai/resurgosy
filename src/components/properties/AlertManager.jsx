@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Plus, Trash2 } from "lucide-react";
-import { supabase, isConfigured } from "../../lib/supabaseClient";
+import { supabase, isConfigured } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 
