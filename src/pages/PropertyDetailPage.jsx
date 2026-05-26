@@ -17,6 +17,7 @@ import NeighborhoodScore from '../components/ui/NeighborhoodScore';
 import { useGlobalData } from '../context/GlobalContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase, isConfigured } from '../lib/supabase';
+import ContactOwnerButton from '../components/messaging/ContactOwnerButton';
 import { isSavedProp, toggleSavedProp } from '../utils/savedProps';
 import toast from 'react-hot-toast';
 import { sendAdminAlert, sendInquiryNotification } from '../utils/emailService';
@@ -1818,6 +1819,16 @@ export default function PropertyDetailPage() {
                     حفظ
                   </button>
                 </div>
+              </div>
+            )}
+
+            {!isOwner && property.owner_id && (
+              <div className="flex justify-center">
+                <ContactOwnerButton
+                  propertyId={property.id}
+                  ownerId={property.owner_id}
+                  ownerName={property.ownerName}
+                />
               </div>
             )}
 
