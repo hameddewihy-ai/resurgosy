@@ -116,7 +116,7 @@ export function AuthProvider({ children }) {
         const { data: { user: fresh } } = await supabase.auth.getUser();
         const base = sessionToUser({ user: fresh ?? session.user });
         if (base) {
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
           setUser(mergeProfile(base, profile));
         } else {
           setUser(null);
@@ -127,10 +127,12 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // INITIAL_SESSION is handled by getSession().then(getUser()) above — skip here to avoid race
+      if (event === 'INITIAL_SESSION') return;
       const base = sessionToUser(session);
       if (base) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
         setUser(mergeProfile(base, profile));
       } else {
         setUser(null);
