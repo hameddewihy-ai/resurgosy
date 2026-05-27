@@ -90,7 +90,6 @@ export default function PrivacyPage() {
         title="سياسة الخصوصية"
         description="سياسة الخصوصية وحماية البيانات لمنصة ريسورقو"
         path="/privacy"
-        noindex={true}
       />
 
       {/* Hero — narrow, editorial */}

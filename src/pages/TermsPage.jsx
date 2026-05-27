@@ -82,9 +82,8 @@ export default function TermsPage() {
     <div className="min-h-screen bg-cream" dir="rtl">
       <SEO
         title="الشروط والأحكام"
-        description="شروط وأحكام استخدام منصة ريسورقو العقارية"
+        description="شروط وأحكام استخدام منصة ريسورجو العقارية"
         path="/terms"
-        noindex={true}
       />
 
       {/* Hero */}
