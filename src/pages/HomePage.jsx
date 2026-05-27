@@ -438,13 +438,13 @@ export default function HomePage() {
       <section className="relative z-20 -mt-10 px-4 pb-0">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white shadow-2xl shadow-navy/25 p-5 sm:p-6 rounded-2xl">
-            <p className="text-charcoal/45 text-[11px] font-bold uppercase tracking-widest mb-4">ابحث عن عقارك في سوريا</p>
+            <p className="text-charcoal/70 text-[11px] font-bold uppercase tracking-widest mb-4">ابحث عن عقارك في سوريا</p>
 
             <div className="flex flex-wrap gap-3 items-end">
               {/* City */}
               <div className="flex-1 min-w-[140px]">
-                <label className="text-charcoal/50 text-[11px] font-semibold block mb-1.5">المدينة</label>
-                <select value={searchCity} onChange={e => setSearchCity(e.target.value)}
+                <label htmlFor="search-city" className="text-charcoal/75 text-[11px] font-semibold block mb-1.5">المدينة</label>
+                <select id="search-city" value={searchCity} onChange={e => setSearchCity(e.target.value)}
                   className="w-full border border-navy/12 rounded-xl px-3 py-2.5 text-sm text-navy bg-white focus:outline-none focus:border-brand transition-colors">
                   <option value="">كل المدن</option>
                   {SEARCH_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -453,8 +453,8 @@ export default function HomePage() {
 
               {/* Type */}
               <div className="flex-1 min-w-[140px]">
-                <label className="text-charcoal/50 text-[11px] font-semibold block mb-1.5">نوع العقار</label>
-                <select value={searchType} onChange={e => setSearchType(e.target.value)}
+                <label htmlFor="search-type" className="text-charcoal/75 text-[11px] font-semibold block mb-1.5">نوع العقار</label>
+                <select id="search-type" value={searchType} onChange={e => setSearchType(e.target.value)}
                   className="w-full border border-navy/12 rounded-xl px-3 py-2.5 text-sm text-navy bg-white focus:outline-none focus:border-brand transition-colors">
                   <option value="">كل الأنواع</option>
                   {['سكني', 'تجاري', 'صناعي', 'أرض'].map(t => <option key={t} value={t}>{t}</option>)}
@@ -463,7 +463,7 @@ export default function HomePage() {
 
               {/* Purpose pills */}
               <div className="flex-1 min-w-[170px]">
-                <label className="text-charcoal/50 text-[11px] font-semibold block mb-1.5">الغرض</label>
+                <label className="text-charcoal/75 text-[11px] font-semibold block mb-1.5">الغرض</label>
                 <div className="flex gap-1.5">
                   {['الكل', 'للبيع', 'للإيجار'].map(p => (
                     <button key={p} onClick={() => setSearchPurpose(p)}
@@ -487,7 +487,7 @@ export default function HomePage() {
 
             {/* Quick city links */}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <span className="text-charcoal/35 text-[11px]">الأكثر بحثاً:</span>
+              <span className="text-charcoal/70 text-[11px]">الأكثر بحثاً:</span>
               {['دمشق', 'حلب', 'اللاذقية', 'حمص', 'طرطوس'].map(city => (
                 <button key={city} onClick={() => handleSearch(city)}
                   className="text-[11px] text-brand hover:text-navy font-semibold border border-brand/20 hover:border-navy/20 px-3 py-0.5 rounded-full transition-all hover:bg-cream">

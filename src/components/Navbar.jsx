@@ -171,12 +171,12 @@ export default function Navbar() {
           {/* Desktop search button */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden lg:flex items-center gap-2 bg-cream hover:bg-navy/5 border border-navy/12 rounded-xl px-3 py-1.5 text-charcoal/50 hover:text-navy transition-colors shrink-0"
+            className="hidden lg:flex items-center gap-2 bg-cream hover:bg-navy/5 border border-navy/12 rounded-xl px-3 py-1.5 text-charcoal/75 hover:text-navy transition-colors shrink-0"
             title="بحث عالمي (Ctrl+K)"
           >
             <Search size={13} />
             <span className="text-xs">بحث...</span>
-            <kbd className="text-[10px] border border-navy/12 rounded px-1 py-px font-sans leading-none text-charcoal/30">⌃K</kbd>
+            <kbd className="text-[10px] border border-navy/12 rounded px-1 py-px font-sans leading-none text-charcoal/65">⌃K</kbd>
           </button>
 
           {/* Auth area */}
