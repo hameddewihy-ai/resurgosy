@@ -336,6 +336,72 @@ export function GlobalProvider({ children }) {
       });
   }, [user]);
 
+  // ── Supabase: load finishing companies ──────────────────────────────────────
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('companies').select('*').eq('is_active', true).then(({ data }) => {
+      if (!data?.length) return;
+      setFinishingCompanies(data.map(c => ({
+        id:          c.id,
+        name:        c.name,
+        city:        c.city || '',
+        badge:       c.badge || 'قيد التحقق',
+        specs:       c.specializations || [],
+        description: c.description || '',
+        phone:       c.phone || '',
+        email:       c.email || '',
+        website:     c.website || '',
+        priceRange:  { tier: c.price_range_tier || 'mid' },
+        rating:      c.rating || 0,
+        projects:    c.projects_count || 0,
+        logo:        c.logo_url || null,
+      })));
+    });
+  }, []);
+
+  // ── Supabase: load studies ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('studies').select('*').eq('is_published', true).order('created_at', { ascending: false }).then(({ data }) => {
+      if (!data?.length) return;
+      setStudiesList(data.map(s => ({
+        id:       s.id,
+        title:    s.title,
+        city:     s.city || '',
+        type:     s.type || '',
+        author:   s.author || '',
+        summary:  s.summary || '',
+        content:  s.content || '',
+        category: s.category || 'دراسة جدوى',
+        date:     s.created_at ? s.created_at.slice(0, 10) : '',
+      })));
+    });
+  }, []);
+
+  // ── Supabase: load investor_projects ────────────────────────────────────────
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('investor_projects').select('*').then(({ data }) => {
+      if (!data?.length) return;
+      setInvestmentProjects(data.map(p => ({
+        id:          p.id,
+        title:       p.name || p.title,
+        name:        p.name || p.title,
+        city:        p.city || '',
+        type:        p.type || '',
+        status:      p.status || 'active',
+        irr:         p.irr != null ? Number(p.irr) : null,
+        roi:         p.roi != null ? Number(p.roi) : null,
+        tier:        p.tier || 'Gold',
+        vip:         p.vip ?? true,
+        size:        p.size || '',
+        tags:        p.tags || [],
+        locked:      p.locked ?? false,
+        description: p.description || '',
+      })));
+    });
+  }, []);
+
   const pushCrossHint = (hint) => {
     setCrossHint(hint);
     setTimeout(() => setCrossHint(null), 9000);

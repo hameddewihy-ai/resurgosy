@@ -96,6 +96,11 @@ export default function MasterAdminDashboard() {
     type: 'solar',
   });
 
+  // City price baselines state
+  const [cityPrices, setCityPrices] = useState([]);
+  const [editingCity, setEditingCity] = useState(null);
+  const [cityPriceInput, setCityPriceInput] = useState('');
+
   // Supabase-loaded admin data (null = not yet loaded)
   const [pendingProps,   setPendingProps]   = useState(null); // pending_review properties
   const [adminProps,     setAdminProps]     = useState(null);
@@ -292,6 +297,14 @@ export default function MasterAdminDashboard() {
       });
     }).catch(() => {});
   }, [user]);
+
+  // Load city price baselines
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('city_price_baselines').select('*').order('city').then(({ data }) => {
+      if (data) setCityPrices(data);
+    });
+  }, []);
 
   // Security Gate
   if (!user || user.role !== 'admin') {
@@ -502,6 +515,19 @@ export default function MasterAdminDashboard() {
   const handleSaveRate = () => {
     setSypExchangeRate(Number(exchangeInput));
     toast.success(`تم تحديث سعر الصرف العام للمنصة: 1$ = ${Number(exchangeInput).toLocaleString()} ل.س`);
+  };
+
+  const handleSaveCityPrice = async (id) => {
+    const val = Number(cityPriceInput);
+    if (!val || val <= 0) { toast.error('أدخل سعراً صحيحاً'); return; }
+    if (isConfigured) {
+      const { error } = await supabase.from('city_price_baselines').update({ base_price_usd: val }).eq('id', id);
+      if (error) { toast.error('حدث خطأ أثناء الحفظ'); return; }
+    }
+    setCityPrices(prev => prev.map(c => c.id === id ? { ...c, base_price_usd: val } : c));
+    setEditingCity(null);
+    setCityPriceInput('');
+    toast.success('تم تحديث سعر المدينة');
   };
 
   return (
@@ -1577,6 +1603,7 @@ export default function MasterAdminDashboard() {
 
         {/* ── 6. Settings Tab ── */}
         {activeTab === 'settings' && (
+          <div className="space-y-6">
           <div className="max-w-xl mx-auto bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition space-y-6">
             <div>
               <h3 className="text-navy font-black text-sm flex items-center gap-1.5">
@@ -1625,6 +1652,52 @@ export default function MasterAdminDashboard() {
               </div>
 
             </div>
+          </div>
+
+          {/* City Price Baselines */}
+          <div className="max-w-2xl mx-auto bg-white rounded-2xl p-6 shadow-sm border border-navy/10 space-y-4">
+            <div>
+              <h3 className="text-navy font-black text-sm flex items-center gap-1.5">
+                <DollarSign size={16} className="text-brand" /> أسعار القاعدة للمدن ($/م²)
+              </h3>
+              <p className="text-charcoal/50 text-[11px] mt-0.5">يستخدمها خبراء التقييم كمرجع أساسي لحساب قيمة العقارات</p>
+            </div>
+
+            {cityPrices.length === 0 ? (
+              <p className="text-charcoal/40 text-xs py-4 text-center">لا توجد بيانات — تأكد من تشغيل phase1_migration.sql في Supabase</p>
+            ) : (
+              <div className="divide-y divide-navy/5">
+                {cityPrices.map(c => (
+                  <div key={c.id} className="flex items-center justify-between py-2.5 gap-3">
+                    <span className="text-navy font-bold text-sm w-28 shrink-0">{c.city}</span>
+                    {editingCity === c.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="number"
+                          value={cityPriceInput}
+                          onChange={e => setCityPriceInput(e.target.value)}
+                          className="w-28 bg-cream border border-brand/30 rounded-lg px-2.5 py-1.5 text-sm font-bold text-navy outline-none focus:border-brand"
+                          autoFocus
+                          onKeyDown={e => { if (e.key === 'Enter') handleSaveCityPrice(c.id); if (e.key === 'Escape') setEditingCity(null); }}
+                        />
+                        <span className="text-xs text-charcoal/40">$/م²</span>
+                        <button onClick={() => handleSaveCityPrice(c.id)} className="text-xs font-bold text-green-600 hover:text-green-700 px-2 py-1 rounded-lg bg-green-50 border border-green-200">حفظ</button>
+                        <button onClick={() => setEditingCity(null)} className="text-xs text-charcoal/40 hover:text-charcoal px-2 py-1">إلغاء</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 flex-1 justify-between">
+                        <span className="text-brand font-black text-base">${Number(c.base_price_usd).toLocaleString()}<span className="text-charcoal/40 text-[10px] font-normal mr-0.5">/م²</span></span>
+                        <button
+                          onClick={() => { setEditingCity(c.id); setCityPriceInput(String(c.base_price_usd)); }}
+                          className="text-[11px] text-charcoal/40 hover:text-brand border border-navy/10 hover:border-brand/30 px-2.5 py-1 rounded-lg transition-all"
+                        >تعديل</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           </div>
         )}
 

@@ -20,8 +20,8 @@ import { valuationAcceptedHtml, valuationRejectedHtml } from '../../utils/emailT
 const REQ_KEY    = 'resurgo-valuation-requests';
 const REPORT_KEY = 'resurgo-valuation-reports';
 
-// ── City baseline prices ($/م²) — internal reference ─────────────────────────
-const CITY_BASE = {
+// ── City baseline prices ($/م²) — fallback if Supabase unavailable ───────────
+const CITY_BASE_FALLBACK = {
   'دمشق': 1850, 'ريف دمشق': 1200, 'حلب': 1240, 'حمص': 1120,
   'حماة': 980, 'اللاذقية': 2100, 'طرطوس': 1680, 'إدلب': 420,
   'دير الزور': 380, 'الرقة': 290, 'الحسكة': 510,
@@ -33,8 +33,8 @@ const TYPE_MULT = {
 };
 const FLOOR_MULT = { ground: 0.90, low: 0.95, mid: 1.0, high: 1.08, top: 1.12 };
 
-function computeBaseline(req) {
-  const base  = CITY_BASE[req.city] || 1000;
+function computeBaseline(req, cityBase = CITY_BASE_FALLBACK) {
+  const base  = cityBase[req.city] || 1000;
   const tMult = TYPE_MULT[req.propertyType] || 1.0;
   const fMult = FLOOR_MULT[req.floor] || 1.0;
   const m2    = base * tMult * fMult;
@@ -157,9 +157,9 @@ function RequestRow({ req, onSelect, selected, onStatusChange }) {
 }
 
 // ── Adjustment Session ────────────────────────────────────────────────────────
-function AssessmentSession({ req, onIssue }) {
+function AssessmentSession({ req, onIssue, cityBase = CITY_BASE_FALLBACK }) {
   const { sypExchangeRate = 13000 } = useGlobalData() || {};
-  const baseline = useMemo(() => computeBaseline(req), [req]);
+  const baseline = useMemo(() => computeBaseline(req, cityBase), [req, cityBase]);
   const [vals, setVals]       = useState(() => Object.fromEntries(ADJUSTMENTS.map(a => [a.key, a.default])));
   const [notes, setNotes]     = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -396,6 +396,18 @@ export default function AppraiserDashboard() {
   const [requests, setRequests] = useState(getRequests);
   const [reports, setReports]   = useState(getReports);
   const [selected, setSelected] = useState(null);
+  const [cityBase, setCityBase] = useState(CITY_BASE_FALLBACK);
+
+  // Load city baseline prices from Supabase
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('city_price_baselines').select('city, base_price_usd').then(({ data }) => {
+      if (!data?.length) return;
+      const map = {};
+      data.forEach(r => { map[r.city] = Number(r.base_price_usd); });
+      setCityBase(prev => ({ ...prev, ...map }));
+    });
+  }, []);
 
   // Load from Supabase on mount
   useEffect(() => {
@@ -641,7 +653,7 @@ export default function AppraiserDashboard() {
               <button onClick={() => setTab('queue')} className="text-brand text-xs font-bold flex items-center gap-1 mb-4 hover:underline">
                 ← العودة لقائمة الطلبات
               </button>
-              <AssessmentSession req={selected} onIssue={handleIssue} />
+              <AssessmentSession req={selected} onIssue={handleIssue} cityBase={cityBase} />
             </div>
           ) : (
             <div className="bg-white py-16 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">

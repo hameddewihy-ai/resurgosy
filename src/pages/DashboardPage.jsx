@@ -41,16 +41,17 @@ const lsLoad = (key, fallback) => {
 
 
 const TABS = [
-  { id: 'overview',  label: 'نظرة عامة',          icon: LayoutDashboard },
-  { id: 'portfolio', label: 'المحفظة الاستثمارية', icon: TrendingUp },
-  { id: 'saved',     label: 'المحفوظات',           icon: Heart },
-  { id: 'messages',  label: 'رسائلي',              icon: MessageCircle },
-  { id: 'inbox',     label: 'الواردة',             icon: Inbox },
-  { id: 'myprops',   label: 'عقاراتي',             icon: Building2 },
-  { id: 'clearing',  label: 'معاملاتي',            icon: Scale },
-  { id: 'valuations',label: 'طلبات التقييم',       icon: BadgeCheck },
-  { id: 'jobs',      label: 'طلباتي',              icon: Briefcase },
-  { id: 'profile',   label: 'الملف الشخصي',        icon: User },
+  { id: 'overview',       label: 'نظرة عامة',          icon: LayoutDashboard },
+  { id: 'portfolio',      label: 'المحفظة الاستثمارية', icon: TrendingUp },
+  { id: 'saved',          label: 'المحفوظات',           icon: Heart },
+  { id: 'messages',       label: 'رسائلي',              icon: MessageCircle },
+  { id: 'inbox',          label: 'الواردة',             icon: Inbox },
+  { id: 'myprops',        label: 'عقاراتي',             icon: Building2 },
+  { id: 'clearing',       label: 'معاملاتي',            icon: Scale },
+  { id: 'valuations',     label: 'طلبات التقييم',       icon: BadgeCheck },
+  { id: 'jobs',           label: 'طلباتي',              icon: Briefcase },
+  { id: 'notifications',  label: 'إشعاراتي',            icon: Bell },
+  { id: 'profile',        label: 'الملف الشخصي',        icon: User },
 ];
 
 
@@ -140,6 +141,63 @@ function MessagesTab({ user, inquiries }) {
           ))
         )}
       </div>
+    </motion.div>
+  );
+}
+
+function NotificationsTab({ user }) {
+  const [notifs, setNotifs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isConfigured || !user) { setLoading(false); return; }
+    supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        setNotifs(data || []);
+        setLoading(false);
+      });
+  }, [user]);
+
+  const markRead = async (id) => {
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    if (isConfigured) supabase.from('notifications').update({ read: true }).eq('id', id).then(() => {});
+  };
+
+  if (loading) return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-16 text-center">
+      <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto" />
+    </motion.div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl space-y-3">
+      {notifs.length === 0 ? (
+        <div className="bg-white p-12 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+          <Bell size={36} className="mx-auto text-navy/20 mb-3" />
+          <p className="text-charcoal/50 text-sm">لا توجد إشعارات حتى الآن</p>
+        </div>
+      ) : notifs.map((n) => (
+        <div
+          key={n.id}
+          onClick={() => !n.read && markRead(n.id)}
+          className={`bg-white p-4 flex items-start gap-4 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg transition-all cursor-pointer hover:shadow-[0_4px_16px_rgba(31,42,56,0.10)] ${!n.read ? 'border-r-4 border-brand' : 'opacity-70'}`}
+        >
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${n.read ? 'bg-navy/5' : 'bg-brand/10'}`}>
+            <Bell size={16} className={n.read ? 'text-navy/30' : 'text-brand'} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-bold ${n.read ? 'text-charcoal/60' : 'text-navy'}`}>{n.title || 'إشعار'}</p>
+            {n.body && <p className="text-charcoal/55 text-xs mt-0.5 leading-relaxed">{n.body}</p>}
+            <p className="text-charcoal/35 text-[10px] mt-1.5">{n.created_at ? new Date(n.created_at).toLocaleDateString('ar-SY') : ''}</p>
+          </div>
+          {!n.read && <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />}
+        </div>
+      ))}
     </motion.div>
   );
 }
@@ -1310,6 +1368,11 @@ export default function DashboardPage() {
               ))
             )}
           </motion.div>
+        )}
+
+        {/* ── Notifications ── */}
+        {tab === 'notifications' && (
+          <NotificationsTab user={user} />
         )}
 
         {/* ── Profile ── */}
