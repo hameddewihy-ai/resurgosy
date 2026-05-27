@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, Component } from 'react';
+import * as Sentry from '@sentry/react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -71,6 +72,7 @@ const ConfirmPage           = lazy(() => import('./pages/auth/ConfirmPage'));
 class ErrorBoundary extends Component {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { Sentry.captureException(error, { extra: info }); }
   render() {
     if (this.state.hasError) {
       return (
