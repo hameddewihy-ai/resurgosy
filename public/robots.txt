@@ -1,9 +1,20 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-Disallow: /dashboard
-Disallow: /admin/
-Disallow: /auth
 
-Sitemap: https://resurgosy.com/sitemap.xml
-Sitemap: https://resurgosy.com/sitemap-properties.xml
+# Private pages — no indexing needed
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth
+Disallow: /owner/
+Disallow: /engineer/
+Disallow: /contractor/
+Disallow: /developer/
+Disallow: /appraiser/
+Disallow: /investor/vip
+Disallow: /finishing/company-dashboard
+Disallow: /finishing/expat
+Disallow: /clearing/dashboard
+Disallow: /wallet/
+
+Sitemap: https://yjdyibeisprrzyozpqkd.supabase.co/functions/v1/generate-sitemap
