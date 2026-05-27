@@ -107,7 +107,8 @@ export default function ContractorDashboard() {
       .select('*')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('[ContractorDashboard] equipment fetch:', error.message); return; }
         if (!data?.length) return;
         setEquipments(data.map(eq => ({
           id:       eq.id,
@@ -119,7 +120,8 @@ export default function ContractorDashboard() {
           unit:     eq.pricing_unit,
           status:   eq.available ? 'active' : 'rented',
         })));
-      });
+      })
+      .catch(err => console.error('[ContractorDashboard] equipment fetch:', err));
   }, [user]);
 
   const EMPTY_FORM = {

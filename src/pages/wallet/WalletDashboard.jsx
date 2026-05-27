@@ -40,7 +40,7 @@ function DepositModal({ isOpen, onClose, onDeposit }) {
     if (!num || num <= 0) return toast.error('أدخل مبلغاً صحيحاً');
     if (!method) return toast.error('اختر طريقة الشحن');
     onDeposit(num, method.title);
-    toast.success(`تم شحن $${num.toLocaleString()} بنجاح ✅`);
+    toast('تم استلام طلب الإيداع — سيتم المراجعة اليدوية والإضافة لرصيدك خلال 24 ساعة', { icon: '⏳', duration: 7000 });
     setAmount('');
     setMethod(null);
     onClose();

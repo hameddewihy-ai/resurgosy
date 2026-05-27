@@ -211,6 +211,7 @@ export default function NotificationsPanel() {
           open ? 'bg-brand/10 text-brand' : 'text-charcoal/40 hover:text-brand hover:bg-brand/8'
         }`}
         title="الإشعارات"
+        aria-label={unread > 0 ? `الإشعارات — ${unread} غير مقروء` : 'الإشعارات'}
       >
         <Bell size={16} />
         {unread > 0 && (

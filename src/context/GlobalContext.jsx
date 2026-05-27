@@ -103,7 +103,9 @@ export function GlobalProvider({ children }) {
       .select('*')
       .eq('status', 'listed')
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .limit(20)
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] properties fetch:', error.message); }
         if (!data?.length) { setPropertiesLoading(false); return; }
         const normalized = data.map(p => ({
           id:           p.id,
@@ -136,7 +138,8 @@ export function GlobalProvider({ children }) {
         }));
         setProperties(normalized);
         setPropertiesLoading(false);
-      });
+      })
+      .catch(err => { console.error('[GlobalContext] properties fetch:', err); setPropertiesLoading(false); });
   }, []);
 
   useEffect(() => {
@@ -175,7 +178,8 @@ export function GlobalProvider({ children }) {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] wallet fetch:', error.message); return; }
         if (!data) return;
         const escrowBalance = data
           .filter(t => t.type === 'escrow_hold' && t.status === 'pending')
@@ -239,7 +243,8 @@ export function GlobalProvider({ children }) {
           status:     inv.status,
           locked:     inv.locked,
         })));
-      });
+      })
+      .catch(err => console.error('[GlobalContext] investments fetch:', err));
   }, [user]);
 
   // ── Supabase: load finishing RFQs (open ones visible to all companies) ──────
@@ -265,7 +270,8 @@ export function GlobalProvider({ children }) {
           description:   r.description,
           propertyState: r.property_state,
         })));
-      });
+      })
+      .catch(err => console.error('[GlobalContext] finishing_rfqs fetch:', err));
   }, []);
 
   // ── Supabase: Realtime — notify finishing_co users of new RFQs ─────────────
@@ -339,67 +345,76 @@ export function GlobalProvider({ children }) {
   // ── Supabase: load finishing companies ──────────────────────────────────────
   useEffect(() => {
     if (!isConfigured) return;
-    supabase.from('companies').select('*').eq('is_active', true).then(({ data }) => {
-      if (!data?.length) return;
-      setFinishingCompanies(data.map(c => ({
-        id:          c.id,
-        name:        c.name,
-        city:        c.city || '',
-        badge:       c.badge || 'قيد التحقق',
-        specs:       c.specializations || [],
-        description: c.description || '',
-        phone:       c.phone || '',
-        email:       c.email || '',
-        website:     c.website || '',
-        priceRange:  { tier: c.price_range_tier || 'mid' },
-        rating:      c.rating || 0,
-        projects:    c.projects_count || 0,
-        logo:        c.logo_url || null,
-      })));
-    });
+    supabase.from('companies').select('*').eq('is_active', true)
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] companies fetch:', error.message); return; }
+        if (!data?.length) return;
+        setFinishingCompanies(data.map(c => ({
+          id:          c.id,
+          name:        c.name,
+          city:        c.city || '',
+          badge:       c.badge || 'قيد التحقق',
+          specs:       c.specializations || [],
+          description: c.description || '',
+          phone:       c.phone || '',
+          email:       c.email || '',
+          website:     c.website || '',
+          priceRange:  { tier: c.price_range_tier || 'mid' },
+          rating:      c.rating || 0,
+          projects:    c.projects_count || 0,
+          logo:        c.logo_url || null,
+        })));
+      })
+      .catch(err => console.error('[GlobalContext] companies fetch:', err));
   }, []);
 
   // ── Supabase: load studies ───────────────────────────────────────────────────
   useEffect(() => {
     if (!isConfigured) return;
-    supabase.from('studies').select('*').eq('is_published', true).order('created_at', { ascending: false }).then(({ data }) => {
-      if (!data?.length) return;
-      setStudiesList(data.map(s => ({
-        id:       s.id,
-        title:    s.title,
-        city:     s.city || '',
-        type:     s.type || '',
-        author:   s.author || '',
-        summary:  s.summary || '',
-        content:  s.content || '',
-        category: s.category || 'دراسة جدوى',
-        date:     s.created_at ? s.created_at.slice(0, 10) : '',
-      })));
-    });
+    supabase.from('studies').select('*').eq('is_published', true).order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] studies fetch:', error.message); return; }
+        if (!data?.length) return;
+        setStudiesList(data.map(s => ({
+          id:       s.id,
+          title:    s.title,
+          city:     s.city || '',
+          type:     s.type || '',
+          author:   s.author || '',
+          summary:  s.summary || '',
+          content:  s.content || '',
+          category: s.category || 'دراسة جدوى',
+          date:     s.created_at ? s.created_at.slice(0, 10) : '',
+        })));
+      })
+      .catch(err => console.error('[GlobalContext] studies fetch:', err));
   }, []);
 
   // ── Supabase: load investor_projects ────────────────────────────────────────
   useEffect(() => {
     if (!isConfigured) return;
-    supabase.from('investor_projects').select('*').then(({ data }) => {
-      if (!data?.length) return;
-      setInvestmentProjects(data.map(p => ({
-        id:          p.id,
-        title:       p.name || p.title,
-        name:        p.name || p.title,
-        city:        p.city || '',
-        type:        p.type || '',
-        status:      p.status || 'active',
-        irr:         p.irr != null ? Number(p.irr) : null,
-        roi:         p.roi != null ? Number(p.roi) : null,
-        tier:        p.tier || 'Gold',
-        vip:         p.vip ?? true,
-        size:        p.size || '',
-        tags:        p.tags || [],
-        locked:      p.locked ?? false,
-        description: p.description || '',
-      })));
-    });
+    supabase.from('investor_projects').select('*')
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] investor_projects fetch:', error.message); return; }
+        if (!data?.length) return;
+        setInvestmentProjects(data.map(p => ({
+          id:          p.id,
+          title:       p.name || p.title,
+          name:        p.name || p.title,
+          city:        p.city || '',
+          type:        p.type || '',
+          status:      p.status || 'active',
+          irr:         p.irr != null ? Number(p.irr) : null,
+          roi:         p.roi != null ? Number(p.roi) : null,
+          tier:        p.tier || 'Gold',
+          vip:         p.vip ?? true,
+          size:        p.size || '',
+          tags:        p.tags || [],
+          locked:      p.locked ?? false,
+          description: p.description || '',
+        })));
+      })
+      .catch(err => console.error('[GlobalContext] investor_projects fetch:', err));
   }, []);
 
   const pushCrossHint = (hint) => {
@@ -437,16 +452,16 @@ export function GlobalProvider({ children }) {
     const dateStr = new Date().toLocaleDateString('ar-SY', { day: '2-digit', month: 'long', year: 'numeric' });
     const trx = {
       id: 'TRX-' + Date.now(), type: 'deposit',
-      title: `إيداع — ${method}`, category: 'funding',
-      projectId: null, amount: absAmt, status: 'completed',
+      title: `إيداع بانتظار التأكيد — ${method}`, category: 'funding',
+      projectId: null, amount: absAmt, status: 'pending',
       date: dateStr, timestamp: Date.now(),
     };
-    setWallet(prev => ({ ...prev, totalBalance: prev.totalBalance + absAmt, transactions: [trx, ...prev.transactions] }));
+    setWallet(prev => ({ ...prev, transactions: [trx, ...prev.transactions] }));
     if (isConfigured && user) {
       supabase.from('wallet_transactions').insert({
         user_id: user.id, type: 'deposit', title: trx.title,
-        category: 'funding', amount: absAmt, status: 'completed',
-      });
+        category: 'funding', amount: absAmt, status: 'pending',
+      }).catch(err => console.error('[depositToWallet]', err));
     }
   };
 
