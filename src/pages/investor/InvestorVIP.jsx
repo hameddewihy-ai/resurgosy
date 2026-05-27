@@ -1,18 +1,17 @@
-
-import SEO from '../../components/SEO';
-
+import { useState } from 'react';
+import {
   Crown, Box, BarChart3, Flame, Users,
   TrendingUp, MapPin, Building2, Star, Lock, Sparkles,
   Download, FileCheck, Wallet, Scale, ShieldCheck, Landmark, ArrowUpRight,
 } from 'lucide-react';
-
-
-
-
-
-
-
-
+import BIMViewer from '../../components/investor/BIMViewer';
+import NPVDashboard from '../../components/investor/NPVDashboard';
+import DemandHeatMap from '../../components/investor/DemandHeatMap';
+import TeamBuilder from '../../components/investor/TeamBuilder';
+import { useGlobalData } from '../../context/GlobalContext';
+import InvestmentModal from '../../components/invest/InvestmentModal';
+import InvestorPortfolio from '../../components/invest/InvestorPortfolio';
+import toast from 'react-hot-toast';
 
 const TABS = [
   { id: 'overview',   label: 'نظرة عامة',             icon: Sparkles  },
@@ -84,7 +83,6 @@ function Overview({ project }) {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <SEO title="مستثمر VIP" noindex />
       {/* Hero banner */}
       <div className="rounded-2xl overflow-hidden border border-brand/20 bg-gradient-to-br from-brand/8 via-cream to-cream p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -226,7 +224,6 @@ function AllocationCalculator({ projects }) {
 
   return (
     <div className="bg-white p-5 space-y-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-      <SEO title="مستثمر VIP" noindex />
       <div className="flex items-center justify-between">
         <p className="text-navy font-black text-sm">حاسبة توزيع المحفظة</p>
         {total > 0 && (
@@ -243,7 +240,6 @@ function AllocationCalculator({ projects }) {
           const pct   = total > 0 ? Math.round((alloc / total) * 100) : 0;
           return (
             <div key={p.id}>
-      <SEO title="مستثمر VIP" noindex />
               <div className="flex items-center justify-between mb-1.5 gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${ALLOC_COLORS[i % ALLOC_COLORS.length]}`} />
@@ -336,7 +332,6 @@ export default function InvestorVIP() {
 
   return (
     <div className="min-h-screen bg-cream pt-16 pb-20 lg:pb-0" dir="rtl">
-      <SEO title="مستثمر VIP" noindex />
       {/* VIP Header bar — stays navy for premium branding */}
       <div className="bg-navy border-b border-yellow-400/15 px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">

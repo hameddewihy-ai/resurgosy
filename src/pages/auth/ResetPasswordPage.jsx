@@ -1,11 +1,10 @@
-
-import SEO from '../../components/SEO';
-
-
-
-
-
-
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { supabase, isConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 function pwStrength(pw) {
   let s = 0;
@@ -81,7 +80,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-16 pt-[78px]" dir="rtl">
-      <SEO title="إعادة كلمة المرور" noindex />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

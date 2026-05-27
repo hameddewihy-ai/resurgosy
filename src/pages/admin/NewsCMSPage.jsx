@@ -1,14 +1,13 @@
-
-import SEO from '../../components/SEO';
-
-
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
   Plus, Pencil, Trash2, Search, X,
   CheckCircle, FileText, Globe, AlertTriangle, ChevronDown,
   Image as ImageIcon, Tag, Clock,
 } from 'lucide-react';
-
-
-
+import { useNews } from '../../hooks/useNews';
+import { CATEGORIES, getCategoryColor, getCategoryLabel } from '../../data/newsData';
+import toast from 'react-hot-toast';
 
 // ── Blank form state ──────────────────────────────────────────────────────────
 const BLANK = {
@@ -230,7 +229,6 @@ function ArticleForm({ initial, onSave, onClose }) {
 function StatCard({ label, value, sub, color = 'text-navy' }) {
   return (
     <div className="bg-white p-4 text-center shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
-      <SEO title="إدارة الأخبار" noindex />
       <p className={`font-black text-2xl ${color}`}>{value}</p>
       <p className="text-charcoal/60 text-xs mt-0.5">{label}</p>
       {sub && <p className="text-charcoal/35 text-[10px] mt-0.5">{sub}</p>}
@@ -310,7 +308,6 @@ export default function NewsCMSPage() {
 
   return (
     <div className="min-h-screen bg-cream pt-[62px]" dir="rtl">
-      <SEO title="إدارة الأخبار" noindex />
       <div className="max-w-6xl mx-auto px-4 py-8">
 
         {/* Header */}

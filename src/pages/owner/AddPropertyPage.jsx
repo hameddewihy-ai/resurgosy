@@ -1,15 +1,14 @@
-
-import SEO from '../../components/SEO';
-
-
-
-
-
-
-
-
-
-
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, ArrowLeft, Building2, MapPin, DollarSign, CheckCircle, Home, HardHat } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { supabase, isConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { sendAdminAlert } from '../../utils/emailService';
+import StepIndicator from '../../components/owner/StepIndicator';
+import DocUploader from '../../components/owner/DocUploader';
+import SmartImageGallery from '../../components/owner/SmartImageGallery';
+import EngineerMatcher from '../../components/owner/EngineerMatcher';
 
 const STEPS = ['معلومات العقار', 'وثائق التمليك (اختياري)', 'معرض الصور (اختياري)', 'مراجعة وإرسال'];
 
@@ -53,7 +52,6 @@ const INITIAL_FORM = {
 function StepInfo({ form, onChange, onToggleAmenity }) {
   return (
     <div className="space-y-6" dir="rtl">
-      <SEO title="إضافة عقار" noindex />
       {/* Title */}
       <div>
         <label className="text-xs text-charcoal/60 font-medium block mb-2">عنوان العقار <span className="text-red-400">*</span></label>
@@ -233,7 +231,6 @@ function StepReview({ form, docs, images, engineer }) {
 
   return (
     <div className="space-y-5" dir="rtl">
-      <SEO title="إضافة عقار" noindex />
       <div className="card p-5 space-y-3">
         <h4 className="text-navy font-bold text-sm border-b border-navy/10 pb-2">معلومات العقار</h4>
         {rows.map(([k, v]) => (
@@ -404,7 +401,6 @@ export default function AddPropertyPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-24" dir="rtl">
-      <SEO title="إضافة عقار" noindex />
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} className="text-green-500" />
@@ -432,7 +428,6 @@ export default function AddPropertyPage() {
 
   return (
     <div className="min-h-screen bg-cream py-24 px-4" dir="rtl">
-      <SEO title="إضافة عقار" noindex />
       {/* Background glow */}
       <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-brand/5 rounded-full blur-3xl pointer-events-none" />
 

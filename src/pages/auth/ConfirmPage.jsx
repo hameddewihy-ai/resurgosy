@@ -1,7 +1,6 @@
-
-import SEO from '../../components/SEO';
-
-
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const ROLE_REDIRECTS = {
   seeker:         '/properties',
@@ -36,7 +35,6 @@ export default function ConfirmPage() {
   if (expired) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-cream px-6 text-center" dir="rtl">
-      <SEO title="تأكيد البريد" noindex />
         <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center mx-auto">
           <span className="text-red-500 text-2xl">✕</span>
         </div>
@@ -56,7 +54,6 @@ export default function ConfirmPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-cream" dir="rtl">
-      <SEO title="تأكيد البريد" noindex />
       <div className="w-12 h-12 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
       <p className="text-navy font-black text-lg">جاري تفعيل حسابك...</p>
       <p className="text-charcoal/50 text-sm">لحظة واحدة</p>
