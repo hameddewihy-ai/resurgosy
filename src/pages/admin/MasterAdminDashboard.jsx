@@ -405,7 +405,12 @@ export default function MasterAdminDashboard() {
     setPendingProps(prev => prev ? prev.filter(p => p.id !== propId) : prev);
     toast(`تم رفض العقار "${title}" وإخطار المالك`, { icon: '🚫' });
     if (isConfigured) {
-      await supabase.from('properties').update({ status: 'rejected' }).eq('id', propId);
+      const { error: rejectErr } = await supabase
+        .from('properties').update({ status: 'rejected' }).eq('id', propId);
+      if (rejectErr) {
+        toast.error(`خطأ في الرفض: ${rejectErr.message}`);
+        return;
+      }
     }
     if (ownerId) {
       addNotification({
