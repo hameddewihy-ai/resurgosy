@@ -17,4 +17,4 @@ Disallow: /finishing/expat
 Disallow: /clearing/dashboard
 Disallow: /wallet/
 
-Sitemap: https://yjdyibeisprrzyozpqkd.supabase.co/functions/v1/generate-sitemap
+Sitemap: https://resurgosy.com/sitemap.xml
