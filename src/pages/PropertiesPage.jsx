@@ -731,8 +731,8 @@ export default function PropertiesPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="تصفح العقارات في سوريا"
-        description="آلاف العقارات السكنية والتجارية والصناعية في دمشق وحلب وحمص واللاذقية وطرطوس وجميع المحافظات السورية. بيع وإيجار بتقييم رقمي متقدم."
+        title="العقارات"
+        description="تصفح آلاف العقارات للبيع والإيجار في جميع محافظات سوريا"
         path="/properties"
       />
 

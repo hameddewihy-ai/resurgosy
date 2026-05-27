@@ -803,8 +803,8 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="فرص التوظيف الهندسي في سوريا"
-        description="ابحث عن وظائف هندسية في البناء والعقارات والمقاولات في جميع المحافظات السورية. مهندسون معتمدون، شركات موثوقة، رواتب تنافسية."
+        title="فرص العمل"
+        description="أحدث فرص العمل في قطاع البناء والعقارات والهندسة في سوريا"
         path="/jobs"
       />
 

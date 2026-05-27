@@ -163,28 +163,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="منصة العقارات والاستثمار في سوريا"
-        description="RESURGO — منصة متكاملة للعقارات والاستثمار والتوظيف الهندسي والمقاولات في سوريا. مدعومة بالتقنيات المتقدمة وتقنية البلوكتشين."
+        title="RESURGO — منصة العقارات والاستثمار في سوريا"
+        description="اكتشف آلاف العقارات السورية، استثمر بذكاء، وأدر صفقاتك عبر منصة ريسورقو المتكاملة"
         path="/"
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@graph': [
-            {
-              '@type': 'Organization',
-              name: 'RESURGO',
-              url: 'https://resurgo.sy',
-              description: 'منصة العقارات والاستثمار والمقاولات في سوريا',
-              address: { '@type': 'PostalAddress', addressCountry: 'SY', addressLocality: 'دمشق' },
-              contactPoint: { '@type': 'ContactPoint', email: 'info@resurgo.sy', contactType: 'customer service' },
-            },
-            {
-              '@type': 'WebSite',
-              url: 'https://resurgo.sy',
-              name: 'RESURGO',
-              potentialAction: { '@type': 'SearchAction', target: 'https://resurgo.sy/properties?q={search_term_string}', 'query-input': 'required name=search_term_string' },
-            },
-          ],
-        }}
       />
 
       {/* ═══════════════════════════════════════════════════════════════

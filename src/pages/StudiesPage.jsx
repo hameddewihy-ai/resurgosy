@@ -1213,8 +1213,8 @@ export default function StudiesPage() {
   return (
     <div className="min-h-screen bg-engineering-grid" dir="rtl">
       <SEO
-        title="الدراسات الهندسية ودراسات الجدوى"
-        description="تقارير هندسية ودراسات جدوى اقتصادية للمشاريع العقارية في سوريا. تحليل متعمق للسوق مع توصيات الاستثمار والبناء."
+        title="الدراسات العقارية"
+        description="تقارير وتحليلات السوق العقاري السوري — دراسات الجدوى والمقارنات"
         path="/studies"
       />
       <PageHero

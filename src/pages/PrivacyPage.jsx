@@ -88,7 +88,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-cream" dir="rtl">
       <SEO
         title="سياسة الخصوصية"
-        description="كيف تجمع RESURGO بياناتك وتحميها. سياسة الخصوصية الكاملة لمنصة العقارات والاستثمار السورية."
+        description="سياسة الخصوصية وحماية البيانات لمنصة ريسورقو"
         path="/privacy"
         noindex={true}
       />

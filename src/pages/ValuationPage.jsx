@@ -464,8 +464,8 @@ export default function ValuationPage() {
   return (
     <div className="min-h-screen" dir="rtl">
       <SEO
-        title="تقييم عقاري معتمد — IVS 2025 · RICS | RESURGO"
-        description="احصل على تقييم عقاري احترافي معتمد من خبراء MRICS وفق معايير IVS 2025. تقدير مبدئي مجاني، تقرير مكتبي، تقييم ميداني، وتقييم قانوني للمحاكم."
+        title="تقييم العقارات"
+        description="احصل على تقييم احترافي لعقارك من خبراء معتمدين في سوريا"
         path="/valuation"
       />
 

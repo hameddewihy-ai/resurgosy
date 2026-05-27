@@ -163,8 +163,8 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="لوحة التنبيهات التشريعية والعقارية — RESURGO"
-        description="تنبيهات قانونية وضريبية وعقارية محدّثة للسوق السوري. إصلاحات الضرائب، قرارات المحاكم، تعديلات المخططات، ومستجدات المغتربين."
+        title="أخبار العقارات"
+        description="آخر أخبار وتشريعات السوق العقاري السوري"
         path="/news"
       />
 

@@ -293,7 +293,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-cream pt-[62px]" dir="rtl">
-      <SEO title="ملفي الشخصي — RESURGO" description="عرض وتعديل بيانات حسابك على منصة RESURGO" path="/profile" />
+      <SEO title="الملف الشخصي" path="/profile" noindex={true} />
 
       <div className="max-w-2xl mx-auto px-4 py-10">
 

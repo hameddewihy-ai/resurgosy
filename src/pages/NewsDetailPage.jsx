@@ -81,10 +81,9 @@ export default function NewsDetailPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title={article.title}
-        description={article.summary}
-        image={article.image}
-        path={`/news/${article.id}`}
+        title="خبر عقاري"
+        description="تفاصيل الخبر العقاري"
+        path="/news"
         type="article"
       />
 

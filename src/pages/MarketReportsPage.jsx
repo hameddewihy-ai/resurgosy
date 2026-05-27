@@ -146,8 +146,8 @@ export default function MarketReportsPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="تقارير السوق العقاري السوري — RESURGO"
-        description="مؤشر أسعار العقارات السورية بالدولار — بيانات ربعية موثّقة للمناطق الرئيسية. تقارير قابلة للتصدير لمستثمري القطاع العقاري."
+        title="تقارير السوق"
+        description="تقارير وإحصاءات السوق العقاري السوري — أسعار، اتجاهات، توقعات"
         path="/market-reports"
       />
 

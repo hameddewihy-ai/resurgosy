@@ -490,8 +490,8 @@ export default function InvestPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ee]" dir="rtl">
       <SEO
-        title="الاستثمار العقاري في سوريا"
-        description="فرص استثمارية في السوق العقاري السوري مع تحليل NPV وIRR وعوائد تقديرية. استثمر في مشاريع سكنية وتجارية وصناعية بسوريا."
+        title="الاستثمار العقاري"
+        description="فرص استثمار عقاري مدروسة في السوق السوري مع عوائد مضمونة"
         path="/invest"
       />
 

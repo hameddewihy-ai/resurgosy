@@ -81,8 +81,8 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-cream" dir="rtl">
       <SEO
-        title="شروط الاستخدام"
-        description="شروط وأحكام استخدام منصة RESURGO للعقارات والاستثمار في سوريا."
+        title="الشروط والأحكام"
+        description="شروط وأحكام استخدام منصة ريسورقو العقارية"
         path="/terms"
         noindex={true}
       />

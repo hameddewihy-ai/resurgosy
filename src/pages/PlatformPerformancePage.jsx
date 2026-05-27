@@ -40,8 +40,8 @@ export default function PlatformPerformancePage() {
   return (
     <div className="min-h-screen bg-white pt-[62px]" dir="rtl">
       <SEO
-        title="سجل الأداء الفعلي — RESURGO"
-        description="الأداء الحقيقي لمنصة RESURGO: مشاريع مكتملة، عوائد موزَّعة، وشفافية كاملة."
+        title="أداء المنصة"
+        description="إحصاءات ونتائج التمويل الجماعي العقاري عبر منصة ريسورقو"
         path="/crowdfund/track-record"
       />
 

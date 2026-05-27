@@ -1450,6 +1450,7 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="min-h-screen bg-white pb-20 lg:pb-0" dir="rtl">
+      <SEO title="عقار للبيع" description="تفاصيل العقار، الموقع، السعر، ومعلومات التواصل" path="/properties" type="article" />
 
       {/* ── Print-only report layout ── */}
       <style>{`
@@ -1515,27 +1516,6 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
-      <SEO
-        title={`${property.title} — ${property.city}`}
-        description={`${property.subtype} ${property.status} في ${property.district}، ${property.city}. ${property.area} م² · ${property.priceDisplay}. ${property.desc.slice(0, 100)}`}
-        image={property.images[0]}
-        path={`/properties/${property.id}`}
-        type="product"
-        price={property.price}
-        currency="USD"
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'RealEstateListing',
-          name: property.title,
-          description: property.desc,
-          url: `https://resurgo.sy/properties/${property.id}`,
-          image: property.images,
-          address: { '@type': 'PostalAddress', streetAddress: property.district, addressLocality: property.city, addressCountry: 'SY' },
-          offers: { '@type': 'Offer', price: property.price, priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
-          floorSize: { '@type': 'QuantitativeValue', value: property.area, unitCode: 'MTK' },
-          numberOfRooms: property.rooms || undefined,
-        }}
-      />
       <StickyBar property={property} />
 
       <div className="pt-16">
