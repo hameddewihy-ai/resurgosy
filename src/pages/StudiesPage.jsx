@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase, isConfigured } from '../lib/supabase';
+import { sendEmail } from '../utils/sendEmail';
 import PageHero from '../components/PageHero';
 import SEO from '../components/SEO';
 
@@ -1072,6 +1073,20 @@ function ExpertApplyModal({ onClose }) {
         bio:         form.bio.trim() || null,
       });
       if (error) { toast.error('حدث خطأ أثناء الإرسال، حاول مرة أخرى'); return; }
+      sendEmail({
+        to: 'hameddewihy@gmail.com',
+        subject: `طلب انضمام خبير جديد — ${form.name}`,
+        html: `<div dir="rtl" style="font-family:Arial,sans-serif">
+          <h2>طلب انضمام خبير جديد</h2>
+          <p><strong>الاسم:</strong> ${form.name}</p>
+          <p><strong>التخصص:</strong> ${form.specialty}</p>
+          <p><strong>المدينة:</strong> ${form.city}</p>
+          <p><strong>سنوات الخبرة:</strong> ${form.years || 'غير محدد'}</p>
+          <p><strong>الهاتف:</strong> ${form.phone}</p>
+          <p><strong>البريد:</strong> ${form.email}</p>
+          ${form.bio ? `<p><strong>نبذة:</strong> ${form.bio}</p>` : ''}
+        </div>`,
+      });
     }
     setSubmitted(true);
     toast.success('تم استلام طلبك — سيتواصل معك فريق RESURGO خلال 48 ساعة');
