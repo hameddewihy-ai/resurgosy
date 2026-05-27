@@ -59,6 +59,8 @@ function mergeProfile(u, profile) {
   if (!profile) return u;
   return {
     ...u,
+    // profiles.role overrides JWT role — allows admin to assign roles without JWT refresh
+    role:                    profile.role                    || u.role,
     full_name:               profile.full_name               || u.full_name,
     phone:                   profile.phone                   || u.phone,
     province:                profile.province                || u.province,
