@@ -109,10 +109,17 @@ export function AuthProvider({ children }) {
     }
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const base = sessionToUser(session);
-      if (base) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
-        setUser(mergeProfile(base, profile));
+      if (session) {
+        // Force-refresh the JWT so any SQL role changes take effect immediately
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        const activeSession = refreshed?.session ?? session;
+        const base = sessionToUser(activeSession);
+        if (base) {
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).single();
+          setUser(mergeProfile(base, profile));
+        } else {
+          setUser(null);
+        }
       } else {
         setUser(null);
       }
