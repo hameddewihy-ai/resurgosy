@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Building2, MapPin, DollarSign, CheckCircle, Home, HardHat } from 'lucide-react';
 import toast from 'react-hot-toast';

@@ -1,4 +1,4 @@
-﻿import { useGlobalData } from '../context/GlobalContext';
+import { useGlobalData } from '../context/GlobalContext';
 import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
