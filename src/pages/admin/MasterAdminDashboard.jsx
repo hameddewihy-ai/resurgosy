@@ -374,7 +374,13 @@ export default function MasterAdminDashboard() {
     setAdminProps(prev => prev ? [{ ...prop, status: 'listed' }, ...prev] : prev);
     toast.success(`تمت الموافقة على "${prop.title}" ونُشر في الدليل`);
     if (isConfigured) {
-      await supabase.from('properties').update({ status: 'listed' }).eq('id', prop.id);
+      const { error: updateErr } = await supabase
+        .from('properties').update({ status: 'listed' }).eq('id', prop.id);
+      if (updateErr) {
+        toast.error(`خطأ في التحديث: ${updateErr.message}`);
+        console.error('[Admin] approve property update error:', updateErr);
+        return;
+      }
       supabase.functions.invoke('match-search-alerts',     { body: { ...prop, status: 'listed' } }).catch(() => {});
       supabase.functions.invoke('notify-property-alerts', { body: { ...prop, status: 'listed' } }).catch(() => {});
     }
