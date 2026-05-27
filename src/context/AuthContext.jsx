@@ -114,10 +114,8 @@ export function AuthProvider({ children }) {
       if (session) {
         const { data: { user: fresh } } = await supabase.auth.getUser();
         const base = sessionToUser({ user: fresh ?? session.user });
-        console.log('[Auth:init] fresh role:', fresh?.user_metadata?.role, '| base role:', base?.role);
         if (base) {
-          const { data: profile, error: pe } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
-          console.log('[Auth:init] profile role:', profile?.role, '| error:', pe?.message);
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
           setUser(mergeProfile(base, profile));
         } else {
           setUser(null);
@@ -129,12 +127,10 @@ export function AuthProvider({ children }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth:event]', event, '| role:', session?.user?.user_metadata?.role);
       if (event === 'INITIAL_SESSION') return;
       const base = sessionToUser(session);
       if (base) {
-        const { data: profile, error: pe } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
-        console.log('[Auth:event] profile role:', profile?.role, '| error:', pe?.message);
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', base.id).maybeSingle();
         setUser(mergeProfile(base, profile));
       } else {
         setUser(null);
