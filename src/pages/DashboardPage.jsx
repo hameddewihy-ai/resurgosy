@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
+import SEO from '../components/SEO';
 import ChatBox from '../components/messaging/ChatBox';
 import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -500,6 +501,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-cream pt-16" dir="rtl">
+      <SEO title="لوحة التحكم" noindex />
 
       {/* Profile header */}
       <div className="border-b border-navy/10 bg-white px-4 py-5">

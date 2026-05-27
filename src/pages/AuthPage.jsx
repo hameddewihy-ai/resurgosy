@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import SEO from '../components/SEO';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye, EyeOff, CheckCircle, ArrowLeft, ArrowRight,
@@ -618,7 +619,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex" dir="rtl">
-
+      <SEO title="تسجيل الدخول" noindex />
       {/* ── Brand panel ───────────────────────────────────── */}
       <div className="lg:w-[42%] shrink-0">
         <BrandPanel roleKey={roleKey} step={step} />

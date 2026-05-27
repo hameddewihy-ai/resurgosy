@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle, DollarSign, MapPin, X, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../context/AuthContext';
-import SmartImageGallery from '../../components/owner/SmartImageGallery';
+
+import SEO from '../../components/SEO';
+
+
+
+
+
+
 
 const PROPERTY_TYPES = [
   { value: 'residential', label: 'سكني',  icon: '🏠' },
@@ -128,12 +129,14 @@ export default function EditPropertyPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">
+      <SEO title="تعديل عقار" noindex />
       <Loader2 size={28} className="animate-spin text-brand" />
     </div>
   );
 
   if (notFound) return (
     <div className="min-h-screen bg-cream flex items-center justify-center" dir="rtl">
+      <SEO title="تعديل عقار" noindex />
       <div className="text-center space-y-3">
         <p className="text-navy font-bold text-lg">العقار غير موجود أو لا تملك صلاحية تعديله</p>
         <Link to="/dashboard" className="text-brand hover:underline text-sm flex items-center gap-1 justify-center">
@@ -145,6 +148,7 @@ export default function EditPropertyPage() {
 
   return (
     <div className="min-h-screen bg-cream pb-20 pt-20" dir="rtl">
+      <SEO title="تعديل عقار" noindex />
       <div className="max-w-2xl mx-auto px-4">
 
         {/* Header */}

@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
-import { supabase, isConfigured } from '../../lib/supabase';
-import {
+
+import SEO from '../../components/SEO';
+
+
+
+
   Tractor, Plus, Save, Trash2, Edit3, Settings, X,
   MapPin, Clock, Box, Wrench, ChevronDown, CheckCircle, FileText, Search, MessageCircle,
   Inbox, Globe, Star, Phone, Bell, DollarSign, XCircle, ChevronLeft
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useGlobalData } from '../../context/GlobalContext';
-import { EQ_MARKET_KEY, getMarketEquipment } from '../../data/equipmentData';
-import { sendAdminAlert } from '../../utils/emailService';
+
+
+
+
 
 const EQUIPMENT_CATEGORIES = [
   { id: 'earthmoving', label: 'حفريات وأعمال ترابية' },
@@ -264,6 +265,7 @@ export default function ContractorDashboard() {
 
   return (
     <div className="min-h-screen bg-cream pt-16 pb-10" dir="rtl">
+      <SEO title="لوحة المقاول" noindex />
       <div className="max-w-6xl mx-auto px-5">
         
         {/* Header */}
@@ -695,6 +697,7 @@ export default function ContractorDashboard() {
                   const isOpen = expandedRfq === rfq.id;
                   return (
                     <div key={rfq.id} className="bg-white rounded-2xl border border-navy/8 shadow-sm overflow-hidden">
+      <SEO title="لوحة المقاول" noindex />
                       {/* card header — always visible */}
                       <button
                         onClick={() => setExpandedRfq(isOpen ? null : rfq.id)}

@@ -1,16 +1,17 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
+
+import SEO from '../../components/SEO';
+
+
+
   MapPin, Calendar, CheckCircle, Clock, AlertCircle,
   Camera, MessageSquare, DollarSign, Home, Phone,
   Send, Globe, ChevronRight, Play,
   TrendingUp, Shield, Star, ArrowLeft, Package,
   Building2, FileText, X as XIcon
 } from 'lucide-react';
-import { useGlobalData } from '../../context/GlobalContext';
-import toast from 'react-hot-toast';
-import RatingWidget from '../../components/ui/RatingWidget';
+
+
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ const daysLeft = (endDate) => {
 function StatPill({ icon: Icon, label, value, accent = 'text-brand' }) {
   return (
     <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+      <SEO title="لوحة المغترب" noindex />
       <Icon size={16} className={accent} />
       <div>
         <p className="text-[10px] text-slate-400 leading-none mb-0.5">{label}</p>
@@ -49,6 +51,7 @@ function MilestoneTracker({ milestones, onUpdate }) {
 
   return (
     <div className="dark-card rounded-2xl p-6 gpu-transition">
+      <SEO title="لوحة المغترب" noindex />
       <h3 className="text-white font-bold text-lg mb-5 flex items-center gap-2">
         <TrendingUp size={18} className="text-brand" />
         مراحل المشروع
@@ -62,6 +65,7 @@ function MilestoneTracker({ milestones, onUpdate }) {
             const isOpen = expanded === m.id;
             return (
               <motion.div key={m.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}>
+      <SEO title="لوحة المغترب" noindex />
                 <button onClick={() => setExpanded(isOpen ? null : m.id)} className="w-full text-right">
                   <div className="flex items-start gap-4 relative z-10">
                     <div className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center ring-2 ${cfg.ring} ${
@@ -153,6 +157,7 @@ function MediaGallery({ media }) {
 
   return (
     <div className="dark-card rounded-2xl p-6 gpu-transition">
+      <SEO title="لوحة المغترب" noindex />
       <h3 className="text-white font-bold text-lg mb-5 flex items-center gap-2">
         <Camera size={18} className="text-cta" />
         معرض التحديثات الميدانية
@@ -227,6 +232,7 @@ function ProjectFinancialOverview({ payments, totalBudget, currency, exchangeRat
 
   return (
     <div className="cream-card rounded-2xl p-6 gpu-transition">
+      <SEO title="لوحة المغترب" noindex />
       <h3 className="text-navy font-bold text-lg mb-5 flex items-center gap-2">
         <DollarSign size={18} className="text-cta" />
         الملخص المالي
@@ -298,6 +304,7 @@ function CommunicationLog({ messages, contractor, contractorPhone, onSendMessage
 
   return (
     <div className="dark-card rounded-2xl p-6 flex flex-col gpu-transition">
+      <SEO title="لوحة المغترب" noindex />
       {/* header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white font-bold text-lg flex items-center gap-2">
@@ -508,6 +515,7 @@ export default function ExpatDashboardPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-dark, #0a1422)' }} dir="rtl">
+      <SEO title="لوحة المغترب" noindex />
 
       {/* ── Top Nav Strip ─────────────────────────────────────────────── */}
       <div className="border-b border-white/10 bg-navy/80 backdrop-blur-sm sticky top-0 z-30">

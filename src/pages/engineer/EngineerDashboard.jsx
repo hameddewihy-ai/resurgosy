@@ -1,18 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
+
+import SEO from '../../components/SEO';
+
+
   HardHat, MapPin, Clock, CheckCircle, X, Star, FileText,
   BadgeCheck, Upload, Camera, AlertTriangle, Plus,
   QrCode, Shield, Navigation, BarChart3, Briefcase, Brain, MessageCircle,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import TaskMap from '../../components/engineer/TaskMap';
-import IVSReportForm from '../../components/engineer/IVSReportForm';
-import SkillAssessmentModal from '../../components/engineer/SkillAssessmentModal';
-import FreelanceMarketplace from '../../components/engineer/FreelanceMarketplace';
-import { useAuth } from '../../context/AuthContext';
-import { supabase, isConfigured } from '../../lib/supabase';
-import { formatDate } from '../../utils/formatDate';
+
+
+
+
+
+
+
+
 
 // ── Initial data (populated from Supabase on mount) ───────────────────────────
 const INITIAL_SKILLS = [];
@@ -89,12 +90,14 @@ function QRCheckIn({ task }) {
 
   if (result === 'success') return (
     <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 text-green-600 text-xs font-bold">
+      <SEO title="لوحة المهندس" noindex />
       <CheckCircle size={14} /> تم تسجيل الحضور · {new Date().toLocaleTimeString('ar-SY')}
     </div>
   );
 
   return (
     <div>
+      <SEO title="لوحة المهندس" noindex />
       <button onClick={doCheckIn} disabled={checking}
         className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-navy/15 hover:border-brand/40 text-charcoal/60 hover:text-brand text-xs py-3 rounded-xl transition-all disabled:opacity-50">
         {checking
@@ -146,6 +149,7 @@ function StatsBar({ tasks }) {
   tasks.forEach(t => counts[t.status]++);
   return (
     <div className="grid grid-cols-3 gap-3 mb-5">
+      <SEO title="لوحة المهندس" noindex />
       {[
         { label: 'معلّقة',        value: counts.pending,     color: 'text-amber-600', icon: Clock },
         { label: 'جارٍ تنفيذها',  value: counts.in_progress, color: 'text-brand',     icon: HardHat },
@@ -233,6 +237,7 @@ function SkillsMatrix() {
 
   return (
     <div className="space-y-5">
+      <SEO title="لوحة المهندس" noindex />
       {/* SVP Profile Card */}
       <div className="bg-white p-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
@@ -362,6 +367,7 @@ function AIInspection() {
 
   return (
     <div className="space-y-5">
+      <SEO title="لوحة المهندس" noindex />
       {/* Config card */}
       <div className="bg-white p-5 shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
         {/* Header */}
@@ -598,6 +604,7 @@ export default function EngineerDashboard() {
 
   return (
     <div className="min-h-screen bg-cream pt-16" dir="rtl">
+      <SEO title="لوحة المهندس" noindex />
 
       {/* Header */}
       <div className="bg-white border-b border-navy/10 px-4 py-4">

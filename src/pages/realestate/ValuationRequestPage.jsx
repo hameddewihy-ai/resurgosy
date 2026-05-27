@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SEO from '../../components/SEO';
 import {
   FileSearch, CheckCircle, MapPin, Calculator, ShieldCheck,
   TrendingUp, Building2, Wallet, Scale, Award, Clock,

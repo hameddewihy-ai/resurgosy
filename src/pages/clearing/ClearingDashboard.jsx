@@ -1,16 +1,17 @@
-import { useState } from 'react';
-import {
+
+import SEO from '../../components/SEO';
+
   Scale, Archive, LayoutGrid, Sparkles, Shield, Film,
   CheckCircle, ClipboardList, Clock, Calculator, Globe,
   Plus, FileText, User,
 } from 'lucide-react';
-import ClaimsPipeline       from '../../components/clearing/ClaimsPipeline';
-import TransactionWorkflow  from '../../components/clearing/TransactionWorkflow';
-import TaxCalculator        from '../../components/clearing/TaxCalculator';
-import EmbassyFees          from '../../components/clearing/EmbassyFees';
-import DocStrengthMeter     from '../../components/clearing/DocStrengthMeter';
-import ValidityTracker      from '../../components/clearing/ValidityTracker';
-import { useAuth }          from '../../context/AuthContext';
+
+
+
+
+
+
+
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 const TABS = [
@@ -34,6 +35,7 @@ function ArchiveTable({ newEntry }) {
 
   return (
     <div className="bg-white overflow-hidden shadow-[0_2px_8px_rgba(31,42,56,0.06)] rounded-lg">
+      <SEO title="لوحة التخليص" noindex />
       <div className="px-5 py-3 border-b border-navy/10 flex items-center justify-between">
         <p className="text-navy font-bold text-sm flex items-center gap-2">
           <Archive size={15} className="text-brand" />
@@ -97,6 +99,7 @@ export default function ClearingDashboard() {
 
   return (
     <div className="min-h-screen bg-cream pt-16" dir="rtl">
+      <SEO title="لوحة التخليص" noindex />
 
       {/* ── Top header ── */}
       <div className="border-b border-navy/10 bg-white px-4 py-4">
