@@ -323,7 +323,7 @@ export default function TermsPage() {
               </Prose>
               <div className="border border-navy/10 rounded-2xl overflow-hidden">
                 {[
-                  ['البريد الإلكتروني',  'info@resurgo.sy'],
+                  ['البريد الإلكتروني',  'info@resurgosy.com'],
                   ['الجهة المختصة',      'الفريق القانوني — ريسورغو للتقنية العقارية'],
                   ['وقت الاستجابة',      'خلال 7 أيام عمل'],
                   ['لغة النزاع الرسمية', 'العربية'],

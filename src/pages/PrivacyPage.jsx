@@ -245,7 +245,7 @@ export default function PrivacyPage() {
                     </div>
                   ))}
                 </div>
-                <p>لممارسة أي من هذه الحقوق، تواصل معنا عبر البريد الإلكتروني: <span className="text-brand font-mono">info@resurgo.sy</span></p>
+                <p>لممارسة أي من هذه الحقوق، تواصل معنا عبر البريد الإلكتروني: <span className="text-brand font-mono">info@resurgosy.com</span></p>
               </Prose>
             </section>
 
@@ -288,7 +288,7 @@ export default function PrivacyPage() {
               </Prose>
               <div className="border border-navy/10 rounded-2xl overflow-hidden">
                 {[
-                  ['البريد الإلكتروني', 'info@resurgo.sy'],
+                  ['البريد الإلكتروني', 'info@resurgosy.com'],
                   ['العنوان',           'دمشق، سوريا — يُحدَّد عند الإطلاق الرسمي'],
                   ['وقت الاستجابة',     'خلال 5 أيام عمل'],
                 ].map(([k, v], i) => (
