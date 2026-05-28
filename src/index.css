@@ -131,7 +131,7 @@
 
   /* ── Typography helpers ────────────────────────────────────────── */
   .eyebrow {
-    @apply text-[#3d5a99] text-[11px] font-bold tracking-[0.18em] uppercase;
+    @apply text-navy/70 text-[11px] font-bold tracking-[0.18em] uppercase;
   }
   .eyebrow-white {
     @apply text-white/55 text-[11px] font-bold tracking-[0.18em] uppercase;

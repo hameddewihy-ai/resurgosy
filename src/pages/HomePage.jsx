@@ -521,7 +521,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
 
           <FadeIn className="mb-14">
-            <span className="num-badge block mb-3">01 — المنصات</span>
+            <span aria-hidden="true" className="num-badge block mb-3">01 — المنصات</span>
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-navy leading-[1.4]">
@@ -558,10 +558,10 @@ export default function HomePage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`text-[9px] font-bold tracking-[0.14em] ${c.text}`}>{p.num}</span>
+                            <span aria-hidden="true" className={`text-[9px] font-bold tracking-[0.14em] ${c.text}`}>{p.num}</span>
                             <h3 className="text-navy font-black text-base leading-snug">{p.label}</h3>
                           </div>
-                          <p className="text-charcoal/60 text-xs leading-relaxed mb-3">{p.desc}</p>
+                          <p className="text-charcoal/75 text-xs leading-relaxed mb-3">{p.desc}</p>
                           <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${c.text} opacity-50 group-hover:opacity-100 group-hover:gap-2 transition-all duration-200`}>
                             استكشف <ArrowUpRight size={12} />
                           </span>
@@ -583,7 +583,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <FadeIn className="flex items-end justify-between mb-12 flex-wrap gap-4">
             <div>
-              <span className="num-badge block mb-3">02 — أحدث العقارات</span>
+              <span aria-hidden="true" className="num-badge block mb-3">02 — أحدث العقارات</span>
               <h2 className="text-3xl sm:text-4xl font-black text-navy">عقارات موثّقة ومحقّقة</h2>
               <p className="text-charcoal/60 mt-1.5 text-sm">كل عقار مفحوص ميدانياً ومعتمد من مهندسين متخصصين</p>
             </div>
@@ -618,7 +618,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
 
           <FadeIn className="mb-14">
-            <span className="eyebrow block mb-3">03 — لماذا RESURGO</span>
+            <span aria-hidden="true" className="eyebrow block mb-3">03 — لماذا RESURGO</span>
             <div className="flex items-end justify-between flex-wrap gap-6">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-navy leading-[1.4]">
                 تقنيات خُصِّصت<br />
@@ -671,7 +671,7 @@ export default function HomePage() {
       <section className="bg-white px-4 py-24">
         <div className="max-w-7xl mx-auto">
           <FadeIn className="mb-10">
-            <span className="num-badge block mb-3">04 — الخريطة التفاعلية</span>
+            <span aria-hidden="true" className="num-badge block mb-3">04 — الخريطة التفاعلية</span>
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-3xl sm:text-4xl font-black text-navy">اكتشف العقارات على الخريطة</h2>
@@ -710,7 +710,7 @@ export default function HomePage() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <span className="eyebrow block mb-3">ابدأ من هنا</span>
+            <span aria-hidden="true" className="eyebrow block mb-3">ابدأ من هنا</span>
             <h2 className="text-2xl sm:text-3xl font-black text-navy leading-[1.4]">
               من أيّهم أنت؟
             </h2>
