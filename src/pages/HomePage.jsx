@@ -438,7 +438,7 @@ export default function HomePage() {
       <section className="relative z-20 -mt-10 px-4 pb-0">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white shadow-2xl shadow-navy/25 p-5 sm:p-6 rounded-2xl">
-            <p className="text-charcoal/70 text-[11px] font-bold uppercase tracking-widest mb-4">ابحث عن عقارك في سوريا</p>
+            <p className="text-charcoal/80 text-[11px] font-bold uppercase tracking-widest mb-4">ابحث عن عقارك في سوريا</p>
 
             <div className="flex flex-wrap gap-3 items-end">
               {/* City */}
@@ -487,10 +487,10 @@ export default function HomePage() {
 
             {/* Quick city links */}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <span className="text-charcoal/70 text-[11px]">الأكثر بحثاً:</span>
+              <span className="text-charcoal/80 text-[11px]">الأكثر بحثاً:</span>
               {['دمشق', 'حلب', 'اللاذقية', 'حمص', 'طرطوس'].map(city => (
                 <button key={city} onClick={() => handleSearch(city)}
-                  className="text-[11px] text-brand hover:text-navy font-semibold border border-brand/20 hover:border-navy/20 px-3 py-0.5 rounded-full transition-all hover:bg-cream">
+                  className="text-[11px] text-navy/80 hover:text-navy font-semibold border border-navy/20 hover:border-navy/40 px-3 py-0.5 rounded-full transition-all hover:bg-cream">
                   {city}
                 </button>
               ))}
