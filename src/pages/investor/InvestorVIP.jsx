@@ -11,6 +11,8 @@ import TeamBuilder from '../../components/investor/TeamBuilder';
 import { useGlobalData } from '../../context/GlobalContext';
 import InvestmentModal from '../../components/invest/InvestmentModal';
 import InvestorPortfolio from '../../components/invest/InvestorPortfolio';
+import { useAuth } from '../../context/AuthContext';
+import { sendEmail } from '../../utils/sendEmail';
 import toast from 'react-hot-toast';
 
 const TABS = [
@@ -208,7 +210,7 @@ function Overview({ project }) {
 // ── Portfolio Allocation Calculator ──────────────────────────────────
 const ALLOC_COLORS = ['bg-brand', 'bg-cta', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500'];
 
-function AllocationCalculator({ projects }) {
+function AllocationCalculator({ projects, onConfirm }) {
   const [allocations, setAllocations] = useState(() =>
     Object.fromEntries(projects.map(p => [p.id, 0]))
   );
@@ -310,7 +312,7 @@ function AllocationCalculator({ projects }) {
 
       {total > 0 && (
         <button
-          onClick={() => toast.success('تم حفظ توزيع المحفظة — سيراجعه فريق VIP خلال 24 ساعة')}
+          onClick={() => onConfirm?.(allocations, total, weightedIRR)}
           className="w-full py-2.5 bg-gradient-to-l from-brand to-navy text-white font-black text-sm rounded-xl hover:-translate-y-0.5 transition-all shadow-md shadow-brand/20">
           تأكيد توزيع المحفظة
         </button>
@@ -322,10 +324,30 @@ function AllocationCalculator({ projects }) {
 // ── Main VIP page ─────────────────────────────────────────────────────
 export default function InvestorVIP() {
   const { investmentProjects } = useGlobalData();
+  const { user } = useAuth();
   const vipProjects = investmentProjects.filter(p => p.vip);
   const [activeProject, setActiveProject] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [investModalOpen, setInvestModalOpen] = useState(false);
+
+  const handleAllocationConfirm = (allocations, total, weightedIRR) => {
+    const lines = vipProjects
+      .filter(p => (allocations[p.id] || 0) > 0)
+      .map(p => `<li>${p.title || p.name}: $${allocations[p.id].toLocaleString()} (${Math.round((allocations[p.id] / total) * 100)}%)</li>`)
+      .join('');
+    sendEmail({
+      to: 'hameddewihy@gmail.com',
+      subject: `طلب توزيع محفظة استثمارية — ${user?.user_metadata?.full_name || user?.email || 'مستثمر'}`,
+      html: `<div dir="rtl" style="font-family:Arial,sans-serif">
+        <h2>طلب توزيع محفظة VIP</h2>
+        <p><strong>المستثمر:</strong> ${user?.user_metadata?.full_name || user?.email || '—'}</p>
+        <p><strong>إجمالي الاستثمار:</strong> $${total.toLocaleString()}</p>
+        <p><strong>IRR المرجَّح:</strong> ${weightedIRR.toFixed(1)}%</p>
+        <ul>${lines}</ul>
+      </div>`,
+    });
+    toast.success('تم إرسال طلب التوزيع — سيراجعه فريق VIP خلال 24 ساعة');
+  };
 
   // Use first VIP project as default
   const currentProject = activeProject || vipProjects[0] || null;
@@ -445,7 +467,7 @@ export default function InvestorVIP() {
                     </span>
                   </div>
                   <InvestorPortfolio />
-                  <AllocationCalculator projects={vipProjects} />
+                  <AllocationCalculator projects={vipProjects} onConfirm={handleAllocationConfirm} />
                 </div>
               )}
             </div>
