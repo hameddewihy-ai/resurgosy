@@ -132,7 +132,7 @@ function StatItem({ rawValue, suffix, label }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { user } = useAuth();
-  const { properties } = useGlobalData();
+  const { properties, propertiesLoading } = useGlobalData();
   const { articles } = useNews();
   const navigate = useNavigate();
   const heroRef  = useRef(null);
@@ -594,7 +594,19 @@ export default function HomePage() {
           </FadeIn>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {properties.slice(0, 3).map((p, i) => <PropertyCard3D key={p.id} property={p} index={i} />)}
+            {propertiesLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-navy/8 overflow-hidden">
+                    <div className="h-52 bg-navy/8 animate-pulse" />
+                    <div className="p-5 space-y-3">
+                      <div className="h-4 w-3/4 bg-navy/8 rounded-xl animate-pulse" />
+                      <div className="h-3 w-full bg-navy/8 rounded-xl animate-pulse" />
+                      <div className="h-3 w-2/3 bg-navy/8 rounded-xl animate-pulse" />
+                    </div>
+                  </div>
+                ))
+              : properties.slice(0, 3).map((p, i) => <PropertyCard3D key={p.id} property={p} index={i} />)
+            }
           </div>
         </div>
       </section>

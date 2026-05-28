@@ -23,10 +23,10 @@ export default function PropertyCard3D({ property, index = 0 }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.65, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.5, delay: index * 0.1, ease: 'easeOut' }}
       style={{ perspective: '1200px' }}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
