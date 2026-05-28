@@ -44,7 +44,7 @@ function lsGet(key, fallback) {
 
 export function GlobalProvider({ children }) {
   const { user } = useAuth();
-  const [developers] = useState(() => enrichRecords('dev', INITIAL_DEVELOPERS, '2025-01-01T00:00:00Z'));
+  const [developers, setDevelopers] = useState(() => enrichRecords('dev', INITIAL_DEVELOPERS, '2025-01-01T00:00:00Z'));
   const [projects, setProjects] = useState(() => enrichRecords('proj', INITIAL_PROJECTS, '2025-01-01T00:00:00Z'));
   const [jobs, setJobs] = useState(() => enrichRecords('job', INITIAL_JOBS, '2025-01-01T00:00:00Z'));
   const [engineers] = useState(() => enrichRecords('eng', INITIAL_ENGINEERS, '2025-01-01T00:00:00Z'));
@@ -390,6 +390,31 @@ export function GlobalProvider({ children }) {
       .catch(err => console.error('[GlobalContext] studies fetch:', err));
   }, []);
 
+  // ── Supabase: load developers ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isConfigured) return;
+    supabase.from('developers').select('*').eq('is_active', true)
+      .then(({ data, error }) => {
+        if (error) { console.error('[GlobalContext] developers fetch:', error.message); return; }
+        if (!data?.length) return;
+        setDevelopers(data.map(d => ({
+          id:             d.id,
+          name:           d.name,
+          city:           d.city || '',
+          type:           d.type || '',
+          status:         d.status || '',
+          founded:        d.founded_year || '',
+          description:    d.description || '',
+          phone:          d.phone || '',
+          email:          d.email || '',
+          logo:           d.logo_url || null,
+          completedCount: d.projects_completed || 0,
+          verified:       true,
+        })));
+      })
+      .catch(err => console.error('[GlobalContext] developers fetch:', err));
+  }, []);
+
   // ── Supabase: load investor_projects ────────────────────────────────────────
   useEffect(() => {
     if (!isConfigured) return;
@@ -610,6 +635,47 @@ export function GlobalProvider({ children }) {
     }));
   };
 
+  // ── Admin: add developer ────────────────────────────────────────────────────
+  const addDeveloper = async (data) => {
+    if (!isConfigured) return;
+    const { data: row, error } = await supabase.from('developers').insert({
+      name: data.name, city: data.city, type: data.type,
+      founded_year: data.founded ? Number(data.founded) : null,
+      description: data.description, phone: data.phone, email: data.email,
+      logo_url: data.logo || null, projects_completed: 0, is_active: true,
+    }).select().single();
+    if (error) throw error;
+    setDevelopers(prev => [{ ...data, id: row.id, verified: true, completedCount: 0 }, ...prev]);
+    return row;
+  };
+
+  // ── Admin: add company ──────────────────────────────────────────────────────
+  const addCompany = async (data) => {
+    if (!isConfigured) return;
+    const { data: row, error } = await supabase.from('companies').insert({
+      name: data.name, city: data.city, description: data.description,
+      phone: data.phone, email: data.email, website: data.website || null,
+      specializations: data.specializations || [], badge: 'قيد التحقق',
+      rating: 0, projects_count: 0, is_active: true,
+    }).select().single();
+    if (error) throw error;
+    setFinishingCompanies(prev => [{ ...data, id: row.id, badge: 'قيد التحقق', rating: 0 }, ...prev]);
+    return row;
+  };
+
+  // ── Admin: add study ─────────────────────────────────────────────────────────
+  const addStudy = async (data) => {
+    if (!isConfigured) return;
+    const { data: row, error } = await supabase.from('studies').insert({
+      title: data.title, city: data.city, type: data.type,
+      author: data.author, summary: data.summary, content: data.content || '',
+      category: data.category || 'دراسة جدوى', is_published: true,
+    }).select().single();
+    if (error) throw error;
+    setStudiesList(prev => [{ ...data, id: row.id, date: new Date().toISOString().slice(0, 10) }, ...prev]);
+    return row;
+  };
+
   return (
     <GlobalContext.Provider value={{
       developers, projects, jobs, engineers, tenders, crmLeads, properties, propertiesLoading,
@@ -623,6 +689,7 @@ export function GlobalProvider({ children }) {
       updateFinishingProjectMilestone, addFinishingProjectMedia, addFinishingProjectMessage,
       setSypExchangeRate,
       finishingCompanies, setFinishingCompanies,
+      addDeveloper, addCompany, addStudy,
       lowBandwidthMode, setLowBandwidthMode,
       sponsorships, toggleSponsorship, incrementSponsorshipClicks, updateSponsorship,
       users, setUsers,

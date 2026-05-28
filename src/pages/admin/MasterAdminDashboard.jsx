@@ -71,6 +71,9 @@ export default function MasterAdminDashboard() {
     setClearingList,
     valuationsList = [],
     setValuationsList,
+    addDeveloper,
+    addCompany,
+    addStudy,
   } = useGlobalData();
 
   // Dashboard navigation tab
@@ -81,6 +84,42 @@ export default function MasterAdminDashboard() {
   const [propQuery, setPropQuery] = useState('');
   const [machineryQuery, setMachineryQuery] = useState('');
   const [jobQuery, setJobQuery] = useState('');
+
+  // ── Add modals ────────────────────────────────────────────────────────────────
+  const [devModal,  setDevModal]  = useState(false);
+  const [compModal, setCompModal] = useState(false);
+  const [studyModal, setStudyModal] = useState(false);
+  const emptyDev   = { name:'', city:'', type:'', founded:'', description:'', phone:'', email:'' };
+  const emptyComp  = { name:'', city:'', specializations:'', description:'', phone:'', email:'', website:'' };
+  const emptyStudy = { title:'', city:'', type:'', author:'', summary:'', category:'دراسة جدوى' };
+  const [devForm,   setDevForm]   = useState(emptyDev);
+  const [compForm,  setCompForm]  = useState(emptyComp);
+  const [studyForm, setStudyForm] = useState(emptyStudy);
+
+  const handleAddDeveloper = async (e) => {
+    e.preventDefault();
+    try {
+      await addDeveloper(devForm);
+      toast.success('تمت إضافة المطور بنجاح');
+      setDevModal(false); setDevForm(emptyDev);
+    } catch (err) { toast.error('خطأ: ' + err.message); }
+  };
+  const handleAddCompany = async (e) => {
+    e.preventDefault();
+    try {
+      await addCompany({ ...compForm, specializations: compForm.specializations.split('،').map(s => s.trim()).filter(Boolean) });
+      toast.success('تمت إضافة الشركة بنجاح');
+      setCompModal(false); setCompForm(emptyComp);
+    } catch (err) { toast.error('خطأ: ' + err.message); }
+  };
+  const handleAddStudy = async (e) => {
+    e.preventDefault();
+    try {
+      await addStudy(studyForm);
+      toast.success('تمت إضافة الدراسة بنجاح');
+      setStudyModal(false); setStudyForm(emptyStudy);
+    } catch (err) { toast.error('خطأ: ' + err.message); }
+  };
 
   // Local state for simulation databases
   const [exchangeInput, setExchangeInput] = useState(sypExchangeRate);
@@ -935,12 +974,17 @@ export default function MasterAdminDashboard() {
               
               {/* 1. المطورون (Developers) */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition space-y-4">
-                <div>
-                  <h3 className="text-navy font-black text-sm flex items-center gap-2">
-                    <Building2 className="text-orange-500" size={16} />
-                    بوابة المطورين العقاريين (Developers Verification)
-                  </h3>
-                  <p className="text-charcoal/50 text-[10px]">مراجعة التراخيص واعتماد شارات المطورين والمؤسسات العقارية</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-navy font-black text-sm flex items-center gap-2">
+                      <Building2 className="text-orange-500" size={16} />
+                      بوابة المطورين العقاريين (Developers Verification)
+                    </h3>
+                    <p className="text-charcoal/50 text-[10px]">مراجعة التراخيص واعتماد شارات المطورين والمؤسسات العقارية</p>
+                  </div>
+                  <button onClick={() => setDevModal(true)} className="shrink-0 flex items-center gap-1 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                    + إضافة مطور
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -967,12 +1011,17 @@ export default function MasterAdminDashboard() {
 
               {/* 2. الإكساء (Finishing Companies) */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition space-y-4">
-                <div>
-                  <h3 className="text-navy font-black text-sm flex items-center gap-2">
-                    <Wrench className="text-teal-600" size={16} />
-                    شارة دليل شركات الإكساء (Finishing Companies)
-                  </h3>
-                  <p className="text-charcoal/50 text-[10px]">ترقية أو سحب شارة التوثيق لشركات الإكساء والديكور الداخلي</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-navy font-black text-sm flex items-center gap-2">
+                      <Wrench className="text-teal-600" size={16} />
+                      شارة دليل شركات الإكساء (Finishing Companies)
+                    </h3>
+                    <p className="text-charcoal/50 text-[10px]">ترقية أو سحب شارة التوثيق لشركات الإكساء والديكور الداخلي</p>
+                  </div>
+                  <button onClick={() => setCompModal(true)} className="shrink-0 flex items-center gap-1 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                    + إضافة شركة
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -1374,12 +1423,17 @@ export default function MasterAdminDashboard() {
               
               {/* 1. دراسات فنية وهندسية (Studies) */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-navy/10 gpu-transition space-y-4">
-                <div>
-                  <h3 className="text-navy font-black text-sm flex items-center gap-2">
-                    <GraduationCap className="text-violet-500" size={16} />
-                    الدراسات الهندسية والاستشارية (Studies)
-                  </h3>
-                  <p className="text-charcoal/50 text-[10px]">متابعة لجان فحص سلامة الأبنية في المناطق المحتاجة لإعادة الإعمار</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-navy font-black text-sm flex items-center gap-2">
+                      <GraduationCap className="text-violet-500" size={16} />
+                      الدراسات الهندسية والاستشارية (Studies)
+                    </h3>
+                    <p className="text-charcoal/50 text-[10px]">متابعة لجان فحص سلامة الأبنية في المناطق المحتاجة لإعادة الإعمار</p>
+                  </div>
+                  <button onClick={() => setStudyModal(true)} className="shrink-0 flex items-center gap-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                    + إضافة دراسة
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -1713,6 +1767,102 @@ export default function MasterAdminDashboard() {
         )}
 
       </div>
+
+      {/* ── Modal: إضافة مطور ─────────────────────────────────────────────────── */}
+    {devModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" dir="rtl">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-navy/10">
+          <div className="flex items-center justify-between p-5 border-b border-navy/8">
+            <p className="text-navy font-black text-sm">إضافة مطور عقاري جديد</p>
+            <button onClick={() => setDevModal(false)} className="text-charcoal/40 hover:text-navy"><X size={16} /></button>
+          </div>
+          <form onSubmit={handleAddDeveloper} className="p-5 space-y-3">
+            {[['name','اسم الشركة *','text',true],['city','المدينة','text',false],['type','النوع (سكني / تجاري)','text',false],['founded','سنة التأسيس','number',false],['phone','الهاتف','text',false],['email','البريد الإلكتروني','email',false]].map(([k,label,type,req]) => (
+              <div key={k}>
+                <label className="text-[10px] font-bold text-charcoal/60 block mb-1">{label}</label>
+                <input type={type} required={req} value={devForm[k]} onChange={e => setDevForm(f => ({...f,[k]:e.target.value}))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand" />
+              </div>
+            ))}
+            <div>
+              <label className="text-[10px] font-bold text-charcoal/60 block mb-1">وصف مختصر</label>
+              <textarea rows={2} value={devForm.description} onChange={e => setDevForm(f => ({...f,description:e.target.value}))}
+                className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand resize-none" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setDevModal(false)} className="flex-1 py-2 rounded-xl border border-navy/15 text-charcoal/60 text-sm">إلغاء</button>
+              <button type="submit" className="flex-1 bg-brand text-white font-bold py-2 rounded-xl text-sm">حفظ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modal: إضافة شركة إكساء ──────────────────────────────────────────── */}
+    {compModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" dir="rtl">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-navy/10">
+          <div className="flex items-center justify-between p-5 border-b border-navy/8">
+            <p className="text-navy font-black text-sm">إضافة شركة إكساء جديدة</p>
+            <button onClick={() => setCompModal(false)} className="text-charcoal/40 hover:text-navy"><X size={16} /></button>
+          </div>
+          <form onSubmit={handleAddCompany} className="p-5 space-y-3">
+            {[['name','اسم الشركة *','text',true],['city','المدينة','text',false],['phone','الهاتف','text',false],['email','البريد الإلكتروني','email',false],['website','الموقع الإلكتروني','text',false]].map(([k,label,type,req]) => (
+              <div key={k}>
+                <label className="text-[10px] font-bold text-charcoal/60 block mb-1">{label}</label>
+                <input type={type} required={req} value={compForm[k]} onChange={e => setCompForm(f => ({...f,[k]:e.target.value}))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand" />
+              </div>
+            ))}
+            <div>
+              <label className="text-[10px] font-bold text-charcoal/60 block mb-1">التخصصات (مفصولة بفاصلة عربية)</label>
+              <input value={compForm.specializations} onChange={e => setCompForm(f => ({...f,specializations:e.target.value}))}
+                placeholder="دهانات، جبس، رخام" className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-charcoal/60 block mb-1">وصف مختصر</label>
+              <textarea rows={2} value={compForm.description} onChange={e => setCompForm(f => ({...f,description:e.target.value}))}
+                className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand resize-none" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setCompModal(false)} className="flex-1 py-2 rounded-xl border border-navy/15 text-charcoal/60 text-sm">إلغاء</button>
+              <button type="submit" className="flex-1 bg-teal-600 text-white font-bold py-2 rounded-xl text-sm">حفظ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modal: إضافة دراسة ───────────────────────────────────────────────── */}
+    {studyModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" dir="rtl">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-navy/10">
+          <div className="flex items-center justify-between p-5 border-b border-navy/8">
+            <p className="text-navy font-black text-sm">إضافة دراسة جدوى / هندسية</p>
+            <button onClick={() => setStudyModal(false)} className="text-charcoal/40 hover:text-navy"><X size={16} /></button>
+          </div>
+          <form onSubmit={handleAddStudy} className="p-5 space-y-3">
+            {[['title','عنوان الدراسة *','text',true],['city','المدينة','text',false],['type','النوع (جدوى / هندسية / سوق)','text',false],['author','اسم المؤلف / الجهة','text',false],['category','الفئة','text',false]].map(([k,label,type,req]) => (
+              <div key={k}>
+                <label className="text-[10px] font-bold text-charcoal/60 block mb-1">{label}</label>
+                <input type={type} required={req} value={studyForm[k]} onChange={e => setStudyForm(f => ({...f,[k]:e.target.value}))}
+                  className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand" />
+              </div>
+            ))}
+            <div>
+              <label className="text-[10px] font-bold text-charcoal/60 block mb-1">ملخص الدراسة</label>
+              <textarea rows={3} value={studyForm.summary} onChange={e => setStudyForm(f => ({...f,summary:e.target.value}))}
+                className="w-full border border-navy/15 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand resize-none" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setStudyModal(false)} className="flex-1 py-2 rounded-xl border border-navy/15 text-charcoal/60 text-sm">إلغاء</button>
+              <button type="submit" className="flex-1 bg-violet-600 text-white font-bold py-2 rounded-xl text-sm">حفظ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
     </div>
   );
 }
