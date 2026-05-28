@@ -116,12 +116,12 @@ export default function Footer() {
 
             {/* Services */}
             <div>
-              <p className="text-white/25 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">خدمات</p>
+              <p className="text-white/50 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">خدمات</p>
               <ul className="space-y-2.5">
                 {SERVICES.map(({ label, to }) => (
                   <li key={to}>
                     <Link to={to}
-                      className="group/link flex items-center gap-1.5 text-white/45 hover:text-white transition-colors duration-200">
+                      className="group/link flex items-center gap-1.5 text-white/65 hover:text-white transition-colors duration-200">
                       <span className="w-0 group-hover/link:w-2 h-[1.5px] bg-brand rounded-full transition-all duration-200 shrink-0" />
                       {label}
                     </Link>
@@ -132,12 +132,12 @@ export default function Footer() {
 
             {/* Platform */}
             <div>
-              <p className="text-white/25 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">المنصة</p>
+              <p className="text-white/50 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">المنصة</p>
               <ul className="space-y-2.5">
                 {PLATFORM.map(({ label, to }) => (
                   <li key={to}>
                     <Link to={to}
-                      className="group/link flex items-center gap-1.5 text-white/45 hover:text-white transition-colors duration-200">
+                      className="group/link flex items-center gap-1.5 text-white/65 hover:text-white transition-colors duration-200">
                       <span className="w-0 group-hover/link:w-2 h-[1.5px] bg-brand rounded-full transition-all duration-200 shrink-0" />
                       {label}
                     </Link>
@@ -148,17 +148,17 @@ export default function Footer() {
 
             {/* Contact */}
             <div className="col-span-2 sm:col-span-1">
-              <p className="text-white/25 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">التواصل</p>
+              <p className="text-white/50 text-[9px] uppercase tracking-[0.24em] mb-5 font-bold">التواصل</p>
               <ul className="space-y-3">
                 <li>
-                  <span className="text-white/40 flex items-center gap-2 text-xs">
+                  <span className="text-white/60 flex items-center gap-2 text-xs">
                     <MessageCircle size={13} className="text-white/25 shrink-0" /> واتساب
                   </span>
                 </li>
                 <li>
-                  <a href="mailto:info@resurgo.sy"
-                    className="text-white/40 hover:text-white transition-colors duration-200 flex items-center gap-2 text-xs">
-                    <Mail size={13} className="text-white/25 shrink-0" /> info@resurgo.sy
+                  <a href="mailto:info@resurgosy.com"
+                    className="text-white/65 hover:text-white transition-colors duration-200 flex items-center gap-2 text-xs">
+                    <Mail size={13} className="text-white/50 shrink-0" /> info@resurgosy.com
                   </a>
                 </li>
                 <li className="flex items-center gap-2 text-white/30 text-xs">
@@ -173,10 +173,10 @@ export default function Footer() {
       {/* ── Bottom bar ── */}
       <div className="relative border-t border-white/[0.06] px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
-          <p className="text-white/20 text-xs">
+          <p className="text-white/45 text-xs">
             © {new Date().getFullYear()} RESURGO · جميع البيانات المعروضة تجريبية
           </p>
-          <div className="flex gap-5 text-xs text-white/20">
+          <div className="flex gap-5 text-xs text-white/45">
             <Link to="/privacy" className="hover:text-white/50 transition-colors">سياسة الخصوصية</Link>
             <Link to="/terms"   className="hover:text-white/50 transition-colors">شروط الاستخدام</Link>
           </div>

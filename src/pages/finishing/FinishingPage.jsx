@@ -382,6 +382,7 @@ function BeforeAfterGallery() {
             {GALLERY_PROJECTS.map((_, i) => (
               <button
                 key={i} onClick={() => setIdx(i)}
+                aria-label={`عرض المشروع ${i + 1}`}
                 className={`rounded-full transition-all ${i === idx ? 'w-6 h-2 bg-cta' : 'w-2 h-2 bg-navy/20 hover:bg-navy/40'}`}
               />
             ))}
