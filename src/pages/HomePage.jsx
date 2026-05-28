@@ -124,7 +124,7 @@ function StatItem({ rawValue, suffix, label }) {
         {val.toLocaleString()}<span className="text-brand text-4xl sm:text-5xl">{suffix}</span>
       </p>
       <div className="w-10 h-[2px] bg-brand/25 rounded-full my-3 group-hover:bg-brand/60 transition-colors duration-300" />
-      <p className="text-charcoal/50 text-[11px] font-bold uppercase tracking-widest">{label}</p>
+      <p className="text-charcoal/70 text-[11px] font-bold uppercase tracking-widest">{label}</p>
     </div>
   );
 }
@@ -558,7 +558,7 @@ export default function HomePage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`text-[9px] font-bold tracking-[0.14em] ${c.text} bg-opacity-10 opacity-70`}>{p.num}</span>
+                            <span className={`text-[9px] font-bold tracking-[0.14em] ${c.text}`}>{p.num}</span>
                             <h3 className="text-navy font-black text-base leading-snug">{p.label}</h3>
                           </div>
                           <p className="text-charcoal/60 text-xs leading-relaxed mb-3">{p.desc}</p>

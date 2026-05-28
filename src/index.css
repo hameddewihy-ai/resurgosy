@@ -131,7 +131,7 @@
 
   /* ── Typography helpers ────────────────────────────────────────── */
   .eyebrow {
-    @apply text-brand text-[11px] font-bold tracking-[0.18em] uppercase;
+    @apply text-[#3d5a99] text-[11px] font-bold tracking-[0.18em] uppercase;
   }
   .eyebrow-white {
     @apply text-white/55 text-[11px] font-bold tracking-[0.18em] uppercase;
@@ -140,8 +140,8 @@
     font-family: 'Bebas Neue', Impact, sans-serif;
     font-size: 0.68rem;
     letter-spacing: 0.16em;
-    color: #5979bb;
-    opacity: 0.85;
+    color: #3d5a99;
+    opacity: 1;
   }
 
   /* ── Focus visible (accessibility) ─────────────────────────────── */

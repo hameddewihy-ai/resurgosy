@@ -104,7 +104,7 @@ function AppContent() {
       <Navbar />
 
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div
+        <motion.main
           key={location.pathname}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -165,7 +165,7 @@ function AppContent() {
             </Routes>
           </Suspense>
           </ErrorBoundary>
-        </motion.div>
+        </motion.main>
       </AnimatePresence>
 
       <Footer />
