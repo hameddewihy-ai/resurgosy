@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 
 const SITE_NAME = 'RESURGO';
 const BASE_URL  = 'https://resurgosy.com';
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80';
+const DEFAULT_IMAGE = 'https://resurgosy.com/og-image.jpg';
 const DEFAULT_DESC  = 'منصة العقارات والاستثمار والمقاولات في سوريا — مدعومة بأحدث التقنيات وتقنية البلوكتشين.';
 
 export default function SEO({
